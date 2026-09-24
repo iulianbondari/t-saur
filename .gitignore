@@ -1,0 +1,11 @@
+benchmarks/out/
+__pycache__/
+*.pyc
+.venv/
+target/
+benchmarks/corpus_real/
+benchmarks/corpus_binary/
+benchmarks/corpus_arm64/
+benchmarks/_wheels/
+tsaur/target-nolepton/
+dist/

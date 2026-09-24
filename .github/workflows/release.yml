@@ -1,0 +1,78 @@
+# Draft release packages for the lite build (no LGPL code) on every version tag.
+# The release is created as a DRAFT: nothing becomes public until a maintainer reviews the
+# packages, their SHA-256 values and the notes, and publishes it by hand
+# (docs/DISTRIBUTION-POLICY.md §3). The full build is not packaged here on purpose.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  lite-packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tag: linux-x64
+          - os: macos-latest
+            tag: macos-arm64
+          - os: windows-latest
+            tag: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build the lite binary
+        run: cargo build --release --no-default-features
+        working-directory: tsaur
+      - name: Run the lite test suite
+        run: cargo test --release --no-default-features
+        working-directory: tsaur
+      - name: Assemble the package
+        shell: bash
+        run: |
+          set -e
+          ver="${GITHUB_REF_NAME#v}"
+          name="tsaur-${ver}-${{ matrix.tag }}-lite"
+          mkdir -p "pkg/$name/docs/spec" "pkg/$name/docs/design"
+          bin=tsaur; [ "${{ matrix.os }}" = "windows-latest" ] && bin=tsaur.exe
+          cp "tsaur/target/release/$bin" "pkg/$name/"
+          cp README.md LICENSE-APACHE LICENSE-MIT THIRD-PARTY-NOTICES.md CHANGELOG.md SECURITY.md "pkg/$name/"
+          cp docs/GUIDE.md docs/V1-CONTRACT.md docs/DISTRIBUTION-POLICY.md "pkg/$name/docs/"
+          cp docs/spec/TSAUR-FORMAT-SPEC-v1.0.md "pkg/$name/docs/spec/"
+          cp docs/design/VOLUME-SETS.md docs/design/VOLUME-TRUST.md "pkg/$name/docs/design/"
+          (cd pkg && python3 -c "import shutil,sys; shutil.make_archive(sys.argv[1], 'zip', '.', sys.argv[1])" "$name")
+          (cd pkg && python3 -c "import hashlib,sys; p=sys.argv[1]+'.zip'; print(hashlib.sha256(open(p,'rb').read()).hexdigest()+'  '+p)" "$name" > "$name.zip.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.tag }}
+          path: pkg/*.zip*
+
+  draft-release:
+    needs: lite-packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: packages
+      - name: Combined checksum list
+        run: cat packages/*.sha256 > packages/SHA256SUMS && cat packages/SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          name: T-saur ${{ github.ref_name }} (draft, lite packages)
+          body: |
+            Draft created by the release workflow; a maintainer reviews the packages and the notes before anything is published.
+            Lite build only (no LGPL code); the full build with Lepton JPEG recompression is available from source (`cargo build --release`), see docs/DISTRIBUTION-POLICY.md.
+            Verify a download with the SHA-256 in SHA256SUMS before unpacking.
+          files: |
+            packages/*.zip
+            packages/SHA256SUMS

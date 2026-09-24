@@ -1,0 +1,51 @@
+name: Bug report
+description: Something did not work as documented (a crash, wrong output, a refused archive that should open, ...)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Security issues (a way to make T-saur write outside a destination, accept unverified bytes, or crash on crafted input) go through the private channel in `SECURITY.md`, not here.
+  - type: input
+    id: version
+    attributes:
+      label: T-saur version and build
+      description: Output of `tsaur --version`, and whether it is the lite or the full build (or built from source, with the commit).
+      placeholder: tsaur 1.0.0-rc.1, lite package for windows-x64
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and CPU
+      placeholder: Windows 11 x64 / Ubuntu 24.04 x86_64 / macOS 15 arm64
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands, in order. If an archive or volume set is needed, say how it was made (options, input kinds) rather than attaching private data.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Full output, including the exit code (`echo $?` / `$LASTEXITCODE`). Exit codes are documented in `docs/GUIDE.md` §7.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I ran `tsaur verify` on the archive involved and included its result.
+        - label: The report contains no private data (archive contents, keys, passwords).

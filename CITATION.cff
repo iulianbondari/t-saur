@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+title: "T-saur: a content-addressed, agent-first archive format and archiver"
+message: "If you refer to T-saur in a publication, please cite it as below."
+type: software
+authors:
+  - family-names: Bondari
+    given-names: Iulian
+    orcid: "https://orcid.org/0009-0000-1616-2088"
+repository-code: "https://github.com/iulianbondari/t-saur"
+license: "Apache-2.0 OR MIT"
+version: 1.0.0-rc.1
+date-released: "2026-09-24"
+abstract: >-
+  T-saur (.tsr) is a free, open-source archive format and archiver: content-defined chunking with
+  BLAKE3 identities, container-aware and per-block compression, offline recovery volumes with
+  Reed-Solomon parity, optional authenticated encryption and signatures, and read-without-extract
+  operations with a Model Context Protocol server for AI agents. Version 1.0.0-rc.1 freezes format
+  version 1.
+keywords:
+  - archive format
+  - compression
+  - content-addressed storage
+  - erasure coding
+  - AI agents

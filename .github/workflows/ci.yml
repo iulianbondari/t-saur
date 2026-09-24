@@ -1,0 +1,79 @@
+# CI for the T-saur reference implementation (activated when the repository goes public).
+# Builds and tests on Linux, macOS and Windows, then checks that the same inputs produce
+# byte-identical archives on every platform (determinism is a format guarantee).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tsaur
+      - name: Build
+        run: cargo build --release --workspace
+        working-directory: tsaur
+      - name: Test
+        run: cargo test --release --workspace
+        working-directory: tsaur
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+        working-directory: tsaur
+      - name: Format
+        run: cargo fmt --all -- --check
+        working-directory: tsaur
+      - name: Lite build (no Lepton, no LGPL code) and its tests
+        run: |
+          cargo build --release --no-default-features --target-dir target-nolepton
+          cargo test --release --no-default-features --target-dir target-nolepton
+        working-directory: tsaur
+      - name: Golden archives read by both release binaries, guide executed with both
+        shell: bash
+        run: |
+          python3 tools/compat_check.py
+          python3 tools/check_guide.py --tsaur tsaur/target/release/tsaur
+          python3 tools/check_guide.py --tsaur tsaur/target-nolepton/release/tsaur
+      - name: Determinism fixture
+        shell: bash
+        run: |
+          mkdir -p /tmp/det && printf 'the same input must give the same archive everywhere\n%.0s' {1..5000} > /tmp/det/a.txt
+          head -c 200000 /dev/urandom > /tmp/det/b.bin 2>/dev/null || python3 -c "import os;open('/tmp/det/b.bin','wb').write(bytes(range(256))*800)"
+          printf 'fixed bytes for the determinism check\n%.0s' {1..2000} > /tmp/det/b.bin
+          ./tsaur/target/release/tsaur pack /tmp/det.tsr /tmp/det --codec zstd
+          python3 - <<'EOF'
+          import hashlib, pathlib, platform
+          h = hashlib.sha256(pathlib.Path('/tmp/det.tsr').read_bytes()).hexdigest()
+          pathlib.Path('det-' + platform.system().lower() + '.sha256').write_text(h)
+          print(platform.system(), h)
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: determinism-${{ matrix.os }}
+          path: det-*.sha256
+
+  determinism:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: determinism-*
+          merge-multiple: true
+      - name: Compare archive hashes across platforms
+        run: |
+          cat det-*.sha256; echo
+          test "$(cat det-*.sha256 | sort -u | wc -l)" -eq 1 && echo "identical on every platform"

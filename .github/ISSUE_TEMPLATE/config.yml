@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security report (private)
+    url: https://github.com/iulianbondari/t-saur/security/advisories/new
+    about: Report a vulnerability privately; see SECURITY.md for what is in scope and what to include.
+  - name: User guide
+    url: https://github.com/iulianbondari/t-saur/blob/main/docs/GUIDE.md
+    about: Packing, verifying, restoring, volume sets and transfers, with every command checked before a release.

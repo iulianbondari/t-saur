@@ -1,0 +1,36 @@
+name: Feature request
+description: A capability T-saur should have, or a limit that should be different
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `docs/V1-CONTRACT.md` says what v1.0 promises and what is deliberately outside it; `ROADMAP.md` lists what is planned. A request that changes the archive format needs a stronger case than one that adds a command, because format v1 is frozen.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem or use case
+      description: What you are trying to do and why the current behaviour does not serve it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Commands, options, output; how it would be verified; how it fails when it fails.
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Does it change the archive or volume format?
+      options:
+        - "No (tooling, CLI, documentation)"
+        - "Yes, backward compatible (v1 readers still open new archives)"
+        - "Yes, incompatible (needs a format version bump)"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
