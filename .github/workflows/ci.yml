@@ -44,9 +44,12 @@ jobs:
       - name: Golden archives read by both release binaries, guide executed with both
         shell: bash
         run: |
-          python3 tools/compat_check.py
-          python3 tools/check_guide.py --tsaur tsaur/target/release/tsaur
-          python3 tools/check_guide.py --tsaur tsaur/target-nolepton/release/tsaur
+          py=python3; bin=tsaur
+          if [ "$RUNNER_OS" = "Windows" ]; then py=python; bin=tsaur.exe; fi
+          "$py" --version
+          "$py" tools/compat_check.py
+          "$py" tools/check_guide.py --tsaur "tsaur/target/release/$bin"
+          "$py" tools/check_guide.py --tsaur "tsaur/target-nolepton/release/$bin"
       - name: Determinism fixture
         shell: bash
         run: |

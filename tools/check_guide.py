@@ -55,6 +55,8 @@ def main() -> int:
     ap.add_argument("--guide", default=str(ROOT / "docs" / "GUIDE.md"))
     a = ap.parse_args()
     exe = Path(a.tsaur).resolve()
+    if not exe.exists() and exe.with_name(exe.name + ".exe").exists():
+        exe = exe.with_name(exe.name + ".exe")  # the same command line works on Windows
     if not exe.exists():
         print(f"binary not found: {exe}", file=sys.stderr)
         return 2
