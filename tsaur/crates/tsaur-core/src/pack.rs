@@ -704,7 +704,7 @@ impl Packer {
             return Ok(());
         }
         let mut blocks = std::mem::take(&mut self.ready);
-        let copts = CodecOptions { level: self.opts.level, long_window_log: 27, dict: self.dict.clone(), choice: self.opts.codec };
+        let copts = CodecOptions { level: self.opts.level, long_window_log: 27, dict: self.dict.clone(), choice: self.opts.codec, effort: codec::EFFORT_DEFAULT };
         // delta dictionaries are gathered up front (reference archives and the recent window)
         let mut dicts: Vec<Option<Vec<u8>>> = Vec::with_capacity(blocks.len());
         for b in blocks.iter_mut() {
