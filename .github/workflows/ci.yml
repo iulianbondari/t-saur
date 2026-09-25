@@ -40,6 +40,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'push' }}
 
+# the workflow token can only read the repository; artifacts need nothing more
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
