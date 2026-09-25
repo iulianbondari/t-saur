@@ -6,6 +6,13 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [Unreleased]
 
+- **README for readers who arrive from a search** (no change to any claim): a plain lead paragraph
+  that says what T-saur is and for whom, the original paragraph kept below it; "When to use it,
+  and when not", "How it differs from ZIP, 7z, RAR and tar + zstd" and "Questions and answers",
+  all drawn from the contract, the guide and the measurements; the MCP server as a section of its
+  own; a contents line; "peer-to-peer distribution" corrected to the direct exchange v1 actually
+  offers; the stale "once the repository is public" removed. `llms.txt` at the repository root
+  points agents at the documents, caveats first.
 - **Network limits for the volume exchange** (roadmap 1.1; design in
   `docs/design/plans/1.1-network-limits-and-supply-chain.md` part A, trust rules in
   `docs/design/VOLUME-TRUST.md` §6.3-§6.4): `serve --revoke FILE` and `fetch --revoke FILE`

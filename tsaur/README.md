@@ -65,8 +65,8 @@ tsaur volumes split   <archive> --data N --parity M [--piece-size-kib K] --out D
 tsaur volumes inspect <files|dirs ...> [--verify]   # sets found, missing volumes, reconstructible?; exit 5 when not
 tsaur volumes join    <out.tsr> <files|dirs ...>    # any N of N + M volumes rebuild the archive (hash-verified before rename)
 tsaur volumes repair  <files|dirs ...> [--out DIR]  # recreate missing/damaged volumes byte-identical
-tsaur volumes serve   <files|dirs ...> [--listen 127.0.0.1:7407] [--expose-lan (--tls-identity FILE --allow FP ... | --allow-anyone)] [--max-connections N] [--max-connections-per-peer N] [--max-requests-per-second N] [--min-rate-kib K]   # serve pieces (read-only)
-tsaur volumes fetch   --set HEX [--descriptor HEX] --from HOST:PORT ... [--peer-id FP ...] [--tls-identity FILE] --out DIR [--local PATH ...] [--volumes needed|all|1,2] [--join OUT.tsr] [--stop-after N]
+tsaur volumes serve   <files|dirs ...> [--listen 127.0.0.1:7407] [--expose-lan (--tls-identity FILE (--allow FP ... | --allow-set SET=FP ... | --allow-file FILE) [--revoke FILE] | --allow-anyone)] [--max-connections N] [--max-connections-per-peer N] [--max-peers N] [--max-requests-per-second N] [--min-rate-kib K] [--max-bandwidth-kib K]   # serve pieces (read-only)
+tsaur volumes fetch   --set HEX [--descriptor HEX] --from HOST:PORT ... [--peer-id FP ...] [--tls-identity FILE] [--revoke FILE] --out DIR [--local PATH ...] [--volumes needed|all|1,2] [--join OUT.tsr] [--stop-after N]
 tsaur pack ... --no-lepton               # full build: store JPEGs as they are, so the lite build can read the archive
 tsaur unpack ... --overwrite             # replace existing files (refused otherwise, before anything is written)
 tsaur volumes keygen  --out FILE        # peer identity for TLS transfers: FILE (private key) + FILE.crt; prints the fingerprint
