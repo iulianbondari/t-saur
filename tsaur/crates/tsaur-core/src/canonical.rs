@@ -116,16 +116,8 @@ pub fn docx_to_markdown(name: &str, docx: &[u8]) -> Result<String> {
                     in_cell = true;
                     cell.clear();
                 }
-                "w:tab" => {
-                    if in_para {
-                        para.push('\t');
-                    }
-                }
-                "w:br" => {
-                    if in_para {
-                        para.push('\n');
-                    }
-                }
+                "w:tab" if in_para => para.push('\t'),
+                "w:br" if in_para => para.push('\n'),
                 _ => {}
             },
             Event::Empty(e) => match e.name().as_ref() {

@@ -591,7 +591,7 @@ impl Packer {
             }
         }
         // best score first; among equals the most recently added entry wins
-        ranked.sort_by(|x, y| (y.0, y.1).cmp(&(x.0, x.1)));
+        ranked.sort_by_key(|x| std::cmp::Reverse((x.0, x.1)));
         ranked.truncate(3);
         ranked.into_iter().map(|(_, _, c)| c).collect()
     }
