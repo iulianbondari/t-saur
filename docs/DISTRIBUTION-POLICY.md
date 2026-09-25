@@ -47,14 +47,16 @@ build or with `pack --no-container`.
    every dependency version. Anyone can build either configuration.
 2. **The recommended public binary is the lite build**, packaged as `tsaur-<version>-<platform>-lite.zip`.
    Every archive it writes opens in every build. It contains, like every build, the LGPL-3.0
-   component `cabac` through `preflate-rs` (see §3.4 and `THIRD-PARTY-NOTICES.md`), so a redistributor
-   (someone bundling `tsaur` into a product or an image) takes on no obligation beyond the
-   permissive notices. Its cost is measurable and documented: JPEG files and PDF images are
+   component `cabac` through `preflate-rs` (see §3.4 and `THIRD-PARTY-NOTICES.md`); a redistributor
+   (someone bundling `tsaur` into a product or an image) takes on the obligations of §3.4 with
+   either build, and the permissive notices for everything else. Its cost is measurable and documented: JPEG files and PDF images are
    stored as they are (`corpus_real`: 87.4 % instead of 78.3 %; everything else is identical).
-3. **The full build is published alongside**, as `tsaur-<version>-<platform>-full.zip`, for users
-   who want Lepton JPEG recompression and accept that archives containing recompressed JPEGs need
-   the full build to open (`pack --no-lepton` in the full build writes universal archives). The
-   package carries `THIRD-PARTY-NOTICES.md`, `licenses/LGPL-3.0.txt` and `licenses/GPL-3.0.txt`.
+3. **The full build is built from source** (`cargo build --release`) by users who want Lepton JPEG
+   recompression and accept that archives containing recompressed JPEGs need the full build to open
+   (`pack --no-lepton` in the full build writes universal archives). The release workflow publishes
+   lite packages only; `tools/package.py` also builds a `-full.zip` for the release gate's clean-
+   directory check, and either package carries `THIRD-PARTY-NOTICES.md`, `licenses/LGPL-3.0.txt`
+   and `licenses/GPL-3.0.txt`.
 4. **LGPL obligations of every binary** (both builds contain `cabac` through `preflate-rs`; until
    2026-09-25 this section wrongly spoke of the full binary only), as the project reads LGPL-3.0 §4
    for a statically linked library: prominent notice (`THIRD-PARTY-NOTICES.md`), the license texts, and the
@@ -70,10 +72,10 @@ build or with `pack --no-container`.
    directory and the packaged binary runs every command of `docs/GUIDE.md`; sizes and SHA-256
    values are written to `dist/SHA256SUMS` and `dist/PACKAGES.md`. Nothing is uploaded by the
    tool.
-4. **No superiority or security claims** in release material beyond what `benchmarks/RESULTS-rust.md`
+6. **No superiority or security claims** in release material beyond what `benchmarks/RESULTS-rust.md`
    and the test suite show, with the corpus, the command lines and "lower is better" stated next to
    every percentage.
-5. **Format** stays the same in both builds: `docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` registers
+7. **Format** stays the same in both builds: `docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` registers
    Lepton as segment kind 2 of a stream recipe; a second implementation may use any Lepton decoder.
 
 ## 4. Reproducing the matrix

@@ -7,10 +7,11 @@ so the reviewer knows what was and was not looked at, not as a substitute for th
 
 ## 1. What to review, identified by commit
 
-* Repository: this one, local until v1. The reviewed state is the annotated git tag
-  **`v1.0.0-rc.1`** (`git show v1.0.0-rc.1` prints its commit and this file's version); the
-  earlier tag `review-1` marks the state before the v1.0 work.
-* Source package: `git archive --format=zip -o dist/tsaur-1.0.0-rc.1-src.zip v1.0.0-rc.1`
+* Repository: `https://github.com/iulianbondari/t-saur`. The reviewed state is the tip of `main`
+  at the time of the review (`git rev-parse main`; name it in the report). The 1.0.0-rc.1 state is
+  the import commit `29bc672` plus the pull requests listed in `CHANGELOG.md`; the tag `v1.0.0`
+  will be created only after this review (`docs/RELEASE-PROCESS.md`).
+* Source package: `git archive --format=zip -o dist/tsaur-src.zip main`
   produces a zip whose SHA-256 is recorded in `dist/SHA256SUMS` next to it (outside version
   control) and in the delivery message; the golden archives, the reference inputs and the
   verification report are inside the tree. Verify the hash before reading.
@@ -83,6 +84,6 @@ the MCP server's protocol details, the benchmark numbers.
 
 ## 6. Reporting
 
-Until the repository is public, findings go directly to the founder through the channel agreed
-for the review; afterwards `SECURITY.md` applies (private vulnerability reporting). Please cite
-the tag and file paths, and separate what was demonstrated from what was suspected.
+Findings that could be exploited go through `SECURITY.md` (private vulnerability reporting, or
+the contact address); everything else as an issue or a pull request against `docs/review/`.
+Please cite the commit and file paths, and separate what was demonstrated from what was suspected.
