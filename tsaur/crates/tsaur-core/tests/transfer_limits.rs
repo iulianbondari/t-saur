@@ -163,12 +163,29 @@ fn rate_limited_tls_connections_are_closed_without_a_reply() {
     let limits = ServerLimits { max_requests_per_second: 2, ..ServerLimits::default() };
     let (addr, stop) = serve(&l.volumes, limits, Some((&server_id, &[client_id.fingerprint])));
     let list = || transfer::list_peer(&addr, Some(&client_id), Some(server_id.fingerprint));
-    // a burst of four (twice the rate), then the fifth is closed before any handshake
-    for _ in 0..4 {
-        assert_eq!(list().unwrap().len(), 1);
+    // twelve pinned requests in a row at 2 per second (burst 4): the first ones are admitted, the
+    // rest are closed before any handshake. The bound is clock-aware: a slow machine refills
+    // tokens while the burst runs, so the refusal is only required when the burst was quick.
+    let t0 = Instant::now();
+    let (mut ok, mut refused, mut refusal) = (0, 0, String::new());
+    for _ in 0..12 {
+        match list() {
+            Ok(sets) => {
+                assert_eq!(sets.len(), 1);
+                ok += 1;
+            }
+            Err(e) => {
+                refused += 1;
+                refusal = e.to_string();
+            }
+        }
     }
-    let err = list().unwrap_err().to_string();
-    assert!(!err.contains("429"), "no protocol reply is sent in TLS mode: {err}");
+    let secs = t0.elapsed().as_secs_f64();
+    assert!(ok >= 2, "the burst is admitted: ok {ok}, refused {refused}, {secs:.2} s");
+    if secs < 3.0 {
+        assert!(refused >= 1, "twelve quick requests at 2 per second must hit the limit: ok {ok}, refused {refused}, {secs:.2} s");
+        assert!(!refusal.contains("429"), "no protocol reply is sent in TLS mode: {refusal}");
+    }
     std::thread::sleep(Duration::from_millis(1100));
     assert_eq!(list().unwrap().len(), 1);
     // and a pinned fetch (descriptor, have list, eight pieces) still completes with the back-off
