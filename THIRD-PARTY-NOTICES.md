@@ -56,6 +56,9 @@ distributor who wants certainty should confirm it with counsel.
 
 ## How this list is produced
 
+`cargo deny list -f tsv` in `tsaur/` gives the same table per crate (the policy that CI enforces
+is `tsaur/deny.toml`); the counts above come from:
+
 ```bash
 cd tsaur
 cargo metadata --format-version 1 | python -c "import json,sys,collections;m=json.load(sys.stdin);ws=set(m['workspace_members']);c=collections.Counter((p.get('license') or 'UNKNOWN') for p in m['packages'] if p['id'] not in ws);print(*sorted(c.items(),key=lambda x:-x[1]),sep=chr(10))"

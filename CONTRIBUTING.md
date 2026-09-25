@@ -41,7 +41,8 @@ The Rust workspace lives in `tsaur/` (`tsaur-core` library + `tsaur` CLI). Bench
 8. **Permissive dependencies only.** New dependencies must be MIT / Apache-2.0 / BSD-class; the one
    LGPL component (`cabac`, reached through `preflate-rs` in every build) is documented in
    `THIRD-PARTY-NOTICES.md` and the README, and any change to that situation goes through both
-   and the CHANGELOG. Check with `cargo metadata`.
+   and the CHANGELOG. Check with `cargo metadata`, or run `cargo deny check` in `tsaur/`
+   (the policy is `tsaur/deny.toml`; CI runs it on every change to the dependency graph).
 
 ## Adding a codec or a filter
 

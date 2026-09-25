@@ -1,0 +1,104 @@
+# cargo-deny policy for the T-saur workspace (`cargo deny --manifest-path tsaur/Cargo.toml check`).
+# What it enforces, and where each rule comes from:
+#   licenses   THIRD-PARTY-NOTICES.md (the permissive set actually present in Cargo.lock) and
+#              CONTRIBUTING.md rule 8 (MIT / Apache-2.0 / BSD-class only); the one LGPL component,
+#              `cabac`, is an explicit exception: it is a non-optional dependency of `preflate-rs`
+#              (every published version), which every build uses for ZIP/OPC and PDF stream
+#              inversion, so the lite build contains it too (docs/DISTRIBUTION-POLICY.md §3.4).
+#   advisories RustSec (SECURITY.md: fixes for the latest minor; yanked crates are never shipped).
+#   bans       no OpenSSL / aws-lc: the TLS transport is rustls with the ring provider on purpose
+#              (no CMake, NASM or system libraries; tsaur-core/Cargo.toml).
+#   sources    crates.io only (docs/PROVENANCE.md, THIRD-PARTY-NOTICES.md: every package is from the
+#              registry and pinned in Cargo.lock).
+# Run in CI by .github/workflows/supply-chain.yml (pull requests that touch the graph or this
+# file, pushes to main, weekly).
+
+[graph]
+# every target: the lock carries windows-sys, redox_syscall and wasi crates that only build elsewhere
+targets = []
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+version = 2
+db-path = "$CARGO_HOME/advisory-dbs"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# a yanked crate in the lock is an error: releases are built from this lock
+yanked = "deny"
+# an unmaintained direct dependency is an error; transitive ones (today: `instant` and `lru` via
+# reed-solomon-erasure 6.0.0, `ttf-parser` via pdf-extract 0.12 -> lopdf 0.42) are not reported
+# here because nothing in the workspace can fix them; the weekly `cargo audit` run lists them.
+# cargo-deny 0.20 has no setting for "unsound" informational advisories and does not report them
+# (RUSTSEC-2026-0253, lru 0.7.8, is visible to `cargo audit` only).
+unmaintained = "workspace"
+# advisories to ignore, each with the reason and a date to revisit; keep this list empty when possible
+ignore = [
+    # { id = "RUSTSEC-0000-0000", reason = "..." },
+]
+
+[licenses]
+version = 2
+# the permissive set present in Cargo.lock on 2026-09-25 (THIRD-PARTY-NOTICES.md); adding a license
+# here is a policy change that goes through THIRD-PARTY-NOTICES.md and the CHANGELOG
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",   # blake3, wasi (OR-alternatives, listed for completeness)
+    "BSD-1-Clause",                     # fiat-crypto (OR-alternative)
+    "BSD-2-Clause",                     # git-version, zerocopy
+    "BSD-3-Clause",                     # dalek crates, subtle, zstd-safe, zstd-sys, encoding_rs (AND)
+    "ISC",                              # rustls-webpki, untrusted, ring (Apache-2.0 AND ISC)
+    "Zlib",                             # zlib-rs; bytemuck, tinyvec, wide (OR-alternatives)
+    "0BSD",                             # adler2 (OR-alternative)
+    "Unlicense",                        # aho-corasick, byteorder, memchr (OR-alternatives)
+    "CC0-1.0",                          # ppmd-rust (CC0-1.0 OR MIT-0), constant_time_eq
+    "MIT-0",                            # ppmd-rust
+    "Unicode-3.0",                      # unicode-ident: (MIT OR Apache-2.0) AND Unicode-3.0
+]
+# the SPDX expression must be recognised with this confidence; every crate in the lock declares
+# `license` in its metadata (none relies on license-file), so the threshold is not reached today
+confidence-threshold = 0.8
+exceptions = [
+    # The only copyleft component, reached through preflate-rs in every build (see the note at
+    # the top). Obligations for a distributed binary: docs/DISTRIBUTION-POLICY.md §3.4,
+    # THIRD-PARTY-NOTICES.md "The LGPL component". Removing this exception is the goal; it
+    # requires either an upstream change (cabac optional in preflate-rs, or a relicensing by its
+    # author) or making container-aware inversion an optional feature of tsaur-core.
+    { name = "cabac", allow = ["LGPL-3.0-or-later"] },
+]
+# r-efi declares `MIT OR Apache-2.0 OR LGPL-2.1-or-later`: an OR expression, used under MIT
+# (THIRD-PARTY-NOTICES.md); no exception is needed because MIT satisfies it.
+
+[licenses.private]
+ignore = true
+
+[bans]
+# 13 crates appear in two or three versions in the resolved graph (RustCrypto 0.10/0.11
+# generations, dalek 4/5, syn 1/2/3, getrandom 0.2/0.4, windows-sys); none is under the
+# workspace's control, so duplicates are reported, not refused. Revisit when the RustCrypto 0.11
+# generation is complete. (The lock lists 17 names with several versions; der/const-oid/pkcs8/spki
+# 0.7-0.10 are resolved into the lock but not part of any build of this workspace.)
+multiple-versions = "warn"
+multiple-versions-include-dev = false
+wildcards = "deny"
+allow-wildcard-paths = false
+highlight = "all"
+deny = [
+    # the transport is rustls + ring by choice: no system TLS, no C build systems (tsaur-core/Cargo.toml)
+    { name = "openssl", reason = "rustls with the ring provider is the only TLS stack" },
+    { name = "openssl-sys", reason = "rustls with the ring provider is the only TLS stack" },
+    { name = "native-tls", reason = "rustls with the ring provider is the only TLS stack" },
+    { name = "aws-lc-rs", reason = "the ring provider was chosen so that no CMake/NASM is needed" },
+    { name = "aws-lc-sys", reason = "the ring provider was chosen so that no CMake/NASM is needed" },
+]
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

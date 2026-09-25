@@ -6,6 +6,17 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [Unreleased]
 
+- **Supply-chain checks in CI** (roadmap 1.1): `.github/workflows/supply-chain.yml` runs
+  `cargo deny` (RustSec advisories, the license policy of `THIRD-PARTY-NOTICES.md` with the one
+  LGPL exception, banned TLS stacks, crates.io as the only source) against `tsaur/deny.toml` on
+  every change to the dependency graph, on every push to `main` that changes it, and weekly;
+  the weekly and manual runs add a `cargo audit` report. A step fails the day the copyleft
+  component stops reaching the lite build, so that the distribution documents are updated in
+  the same pull request. Nothing is compiled; the job costs about a minute.
+- **Documentation-only pull requests are mergeable under the ruleset**:
+  `.github/workflows/ci-docs.yml` reports the required checks with jobs that build nothing, on
+  exactly the paths `ci.yml` ignores.
+
 - **`pack --effort 1..5`** (roadmap 1.1, "speed of `--codec best`"; design in
   `docs/design/plans/1.1-codec-sampling.md`): `--codec best` can decide the codec of each block on
   a sample instead of running every codec on every block. The sample is eight evenly spaced 8 KiB

@@ -1,0 +1,77 @@
+# Supply-chain checks for the Cargo workspace (roadmap 1.1, design in
+# docs/design/plans/1.1-network-limits-and-supply-chain.md part B): cargo-deny against
+# tsaur/deny.toml (RustSec advisories, license policy, banned crates, registry sources) and, on the
+# scheduled and manual runs, cargo-audit for its report of informational advisories that cargo-deny
+# does not surface. Nothing is compiled: both tools read Cargo.lock and `cargo metadata`, so a run
+# costs about a minute of Linux time. Runs when the dependency graph or the policy changes, on
+# every push to main that does, and once a week so that a new advisory against an unchanged lock
+# is still reported. A weekly failure is fixed through a pull request, never by editing the policy
+# to make it pass. Not a required check of the ruleset: a path-filtered workflow that does not run
+# would leave a required check "expected" forever.
+name: supply-chain
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tsaur/Cargo.toml"
+      - "tsaur/Cargo.lock"
+      - "tsaur/crates/*/Cargo.toml"
+      - "tsaur/deny.toml"
+      - ".github/workflows/supply-chain.yml"
+  pull_request:
+    paths:
+      - "tsaur/Cargo.toml"
+      - "tsaur/Cargo.lock"
+      - "tsaur/crates/*/Cargo.toml"
+      - "tsaur/deny.toml"
+      - ".github/workflows/supply-chain.yml"
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC: the advisory database changes even when the lock does not
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deny:
+    name: cargo deny (advisories, licenses, bans, sources)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # third-party actions pinned to commit SHAs (the tag is in the comment)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch, 2026-09
+        with:
+          toolchain: stable
+      # prebuilt binaries, seconds instead of the 5-10 minutes of `cargo install`; tool versions
+      # pinned so that a schema change in a new cargo-deny cannot break a release week
+      - uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
+        with:
+          tool: cargo-deny@0.20.2,cargo-audit@0.22.2
+      - name: Advisory database cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cargo/advisory-dbs
+          key: advisory-db-${{ github.run_id }}
+          restore-keys: advisory-db-
+      - name: cargo deny
+        run: cargo deny --manifest-path tsaur/Cargo.toml --locked check advisories bans licenses sources
+      - name: The copyleft component is reached by every build (documentation-truth check)
+        # docs/DISTRIBUTION-POLICY.md §3.4 and THIRD-PARTY-NOTICES.md say that `cabac`
+        # (LGPL-3.0-or-later) reaches every binary through preflate-rs. This step fails the day the
+        # lock changes that, so that the documents are updated in the same pull request.
+        run: |
+          set -e
+          echo "full graph:"; cargo tree --manifest-path tsaur/Cargo.toml --locked -e normal -i cabac
+          echo "lite graph:"; cargo tree --manifest-path tsaur/Cargo.toml --locked --no-default-features -e normal -i cabac \
+            || { echo "::error::cabac is no longer reachable in the lite build; update DISTRIBUTION-POLICY §3.4, THIRD-PARTY-NOTICES, deny.toml and the release notes"; exit 1; }
+      - name: cargo audit (report; scheduled and manual runs only)
+        if: github.event_name != 'pull_request' && github.event_name != 'push'
+        # no `--deny warnings`: the informational advisories are transitive (reed-solomon-erasure,
+        # pdf-extract) and not fixable here; a vulnerability still fails the run
+        run: cargo audit --file tsaur/Cargo.lock
