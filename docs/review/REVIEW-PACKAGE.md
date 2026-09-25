@@ -42,7 +42,10 @@ the MCP server's protocol details, the benchmark numbers.
   -- -D warnings`, `cargo fmt --check`, on Windows 11 x64 (`RC1-VERIFICATION-REPORT.md`) and on
   Linux x64 (`RC1-VERIFICATION-REPORT-linux-x64.md`, 300 s robustness campaign in
   `ROBUSTNESS-CAMPAIGN-linux-x64.md`); the CI
-  matrix (Linux, macOS, Windows) ran the same suites with identical determinism hashes.
+  matrix (Linux, macOS, Windows) ran the same suites; the determinism fixture's hash was compared
+  by hand from the job logs of run 36105324690 (2026-09-25) and is identical on the three runners
+  and on the Linux verification machine (the CI job's own comparison could not fail before pull
+  request #8; see that pull request).
 * Robustness tests written by the producer: random corruption of volumes never panics and never
   yields wrong bytes; damaged, truncated, foreign or lying progress maps; oversized and malformed
   replies refused before allocation; garbage requests; archive names from the network never
