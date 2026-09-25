@@ -66,13 +66,31 @@ read-only ref for every pull request (`refs/pull/<n>/head`), and those refs stil
 pre-rewrite commits: the removed notes stayed visible through the pull-request pages and their
 diffs, and a forced update of `main` cannot change that. So the public repository is a **new
 repository under the same name**: the development repository was renamed `t-saur-dev` and
-stays private (pull requests #1 to #19, the old history, the CI runs and their logs live there),
+stays private (pull requests #1 to #20, the old history, the CI runs and their logs live there),
 an empty private `t-saur` was created, `main` alone was pushed into it, the push was verified
-from a fresh clone (same root commit `29bc672`, same tree hash as `main` of `t-saur-dev`, no
-commit touching the removed paths, no address other than the published ones in the history),
-and only then was `t-saur` made public. The CI checks recorded in `docs/V1-CONTRACT.md` §5 and
-in the review reports ran in `t-saur-dev` on the same commits; the determinism hash of the
-three systems is quoted there because the run logs are not public.
+from a fresh clone, and only then was `t-saur` made public.
+
+| Item | `t-saur-dev`, `main` | `t-saur`, `main` (pushed 2026-09-25) |
+|---|---|---|
+| tip | `410a58be6184a1580e7497178597c9a26347bd08` | `3e7f728658295a21e9a7119aaa0e37ad01bae13f` |
+| tree of the tip | `db5d0f277f7eaa0e189de848c6e361ffb0945f86` | `db5d0f277f7eaa0e189de848c6e361ffb0945f86` (identical) |
+| commits / root | 57 / `29bc672` | 57 / `29bc672` |
+| commits touching the removed paths | 0 | 0 |
+| identities | three | the maintainer's GitHub no-reply identity; `GitHub <noreply@github.com>` on the web merges |
+| commit signatures | 14, unverifiable | none |
+| `Co-Authored-By` trailers | 25 | 25 |
+| tags, other branches | none pushed | none |
+
+The tip differs because the same mailmap as the rewrite was applied once more, in the clone
+that was pushed: the fourteen commits made after the rewrite (pull requests #17 to #20) carried
+the assistant's identity as committer on five of them, and all fourteen carried SSH signatures
+made by the assistant's session with a key that belongs to no GitHub account (shown as
+"unverified"); the mailmap pass normalised the identities and dropped those signatures, as the
+rewrite had done for the earlier commits. The trees, messages, trailers and dates are unchanged.
+The CI checks recorded in `docs/V1-CONTRACT.md` §5 and in the review reports ran in
+`t-saur-dev` on the same trees (the last one on `410a58b`: the three systems and the determinism
+comparison green, run 36149653595); the determinism hash of the three systems is quoted there
+because the run logs of the development repository are not public.
 
 ## Why the history is not published
 

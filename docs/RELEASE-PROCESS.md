@@ -74,6 +74,11 @@ name, and the development repository keeps everything else:
    request in the new repository, then continue with A2 there. A new repository starts with
    GitHub's defaults, so every setting of A2 is set again, not merely confirmed.
 
+Executed on 2026-09-25: `t-saur-dev` `main` `410a58b` → `t-saur` `main` `3e7f728`, tree
+identical, 57 commits; in step 4 the mailmap of A1 was applied once more to the fourteen
+commits made after the rewrite (`docs/PROVENANCE.md` has the table). The review issue of A3
+was re-created as issue #1 of the new repository and the first workflow run was started by hand.
+
 ### A2. Visibility, rules, preview
 
 1. GitHub → Settings → General → Danger zone → *Change repository visibility* → Public.
