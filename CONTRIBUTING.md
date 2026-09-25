@@ -15,7 +15,8 @@ cargo fmt --all -- --check
 ```
 
 The Rust workspace lives in `tsaur/` (`tsaur-core` library + `tsaur` CLI). Benchmarks are in
-`benchmarks/`, the format specification in `docs/spec/`, the research corpus in `docs/research/`.
+`benchmarks/`, the format specification in `docs/spec/`, the design rationale in
+`docs/DESIGN-AGENT-FIRST.md` and `docs/design/`.
 
 ## Ground rules
 

@@ -11,13 +11,13 @@
 - [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)
 
 ## Phase 0 — Research and decisions (done)
-- [x] Research on 7 areas → `docs/research/`
+- [x] Research on 7 areas (classic archivers, AI compression and formats, P2P and content addressing, encryption, naming, compression theory, agent protocols); the notes are the maintainer's working material, the conclusions are in the design documents
 - [x] Test corpus + reproducible local benchmark (7-Zip 26.03 and WinRAR 7.23 included) → `benchmarks/`
 - [x] Python prototype validating the ideas (CDC + dedup + dictionary + solid + container-aware + canonical + encryption + pieces/RS) → `prototype/`
 - [x] Specification draft v0.1 → `docs/spec/`
-- [x] Name confirmed by the founder: **T-saur**, extension **`.tsr`**; logo concept in `docs/brand/`
+- [x] Name confirmed by the maintainer: **T-saur**, extension **`.tsr`**; logo in `docs/brand/`
 - [x] Agent-first design document → `docs/DESIGN-AGENT-FIRST.md`
-- [ ] Reservations: GitHub org `tsaur-format`, PyPI/npm/crates.io `tsaur`, domains tsaur.dev/.org/.io/.ai + t-saur.com (founder's accounts); formal trademark search (TMview)
+- [x] No name reservations and no trademark filing: T-saur is the name of a free software project, used as such (maintainer's decision, 2026-09-25)
 
 ## Phase 1 — Rust reference implementation, core (in progress)
 - [x] workspace `tsaur/` with `tsaur-core` (format, FastCDC, BLAKE3, zstd + dictionaries, solid blocks, container recipes for ZIP/OPC, XChaCha20-Poly1305 + Argon2id, Ed25519 signatures, limits, pieces + Reed-Solomon parity) and `tsaur-cli` (`pack`, `unpack`, `list`, `verify`, `read`, `pieces`, `recover`, `keygen`, `--json`)
