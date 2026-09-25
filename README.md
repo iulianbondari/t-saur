@@ -9,12 +9,19 @@
 [![format v1 frozen](https://img.shields.io/badge/format-v1%20frozen-101820)](docs/spec/TSAUR-FORMAT-SPEC-v1.0.md)
 [![release candidate](https://img.shields.io/badge/version-1.0.0--rc.1-b08a3e)](CHANGELOG.md)
 
-**T-saur** is a new archive format and archiver designed for AI agents first: information-based compression
-(content-defined chunking with deduplication, shared dictionaries and external references, container-aware
-recompression, per-block codec choice with branch filters for machine code, canonical text views for agents),
-peer-to-peer distribution in verifiable pieces (BLAKE3 Merkle trees, erasure coding), and modern cryptography
-(per-blob AEAD, envelope keys, hybrid post-quantum recipients, signatures). Agents talk to it through a JSON CLI or
-the built-in Model Context Protocol server.
+**T-saur** is a free, open-source archive format (`.tsr`) and command-line archiver, written in Rust, for files that
+people and AI agents need to list, search, read and verify without unpacking them. Archives are content-addressed
+(BLAKE3) and deterministic; authenticated encryption with post-quantum recipients, signatures, offline N + M recovery
+volumes and a built-in Model Context Protocol server are optional parts of the same binary. Format v1 is frozen; the
+current version is 1.0.0-rc.1, with no tagged release or package published yet (`ROADMAP.md`, "Step 0").
+
+In more detail, T-saur is a new archive format and archiver designed for AI agents first: information-based
+compression (content-defined chunking with deduplication, shared dictionaries and external references,
+container-aware recompression, per-block codec choice with branch filters for machine code, canonical text views for
+agents), distribution in verifiable pieces (BLAKE3 Merkle trees, erasure coding; direct exchange between two
+instances, without discovery, tracker or DHT in v1), and modern cryptography (per-blob AEAD, envelope keys, hybrid
+post-quantum recipients, signatures). Agents talk to it through a JSON CLI or the built-in Model Context Protocol
+server.
 
 The project is free and open source (Apache-2.0 OR MIT, at your option); nothing in it depends on an account, a
 service or a network. It is written and maintained by Iulian Bondari, who holds its copyright, with substantial AI
@@ -25,6 +32,13 @@ because of IBM's AIX® trademark. Collaboration and questions: contact@iulianbon
 Start here: `docs/INSTALL.md` (packages, building from source), `docs/GUIDE.md` (first archive, volumes, transfers),
 `docs/V1-CONTRACT.md` (what v1.0 promises and how it is checked), `SECURITY.md` (what the reader guarantees, how to
 report), `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
+
+**Contents:** [Status](#status-100-rc1-release-candidate) ·
+[When to use it, and when not](#when-to-use-it-and-when-not) · [Quick start](#quick-start) ·
+[For AI agents: the MCP server](#for-ai-agents-the-mcp-server) ·
+[How it differs from ZIP, 7z, RAR and tar + zstd](#how-it-differs-from-zip-7z-rar-and-tar--zstd) ·
+[What the measurements show](#what-the-measurements-show) · [Questions and answers](#questions-and-answers) ·
+[Repository layout](#repository-layout) · [Security](#security) · [License](#license)
 
 ## Status: 1.0.0-rc.1 (release candidate)
 
@@ -41,33 +55,41 @@ listed in `ROADMAP.md` ("v1.0 gate").
 otherwise its content, file names and hashes are readable by anyone who holds the file, its volumes or its pieces.
 `volumes serve/fetch --tls-identity` encrypts the connection between two instances, not the archive.
 
-## Repository layout
+## When to use it, and when not
 
-```
-.
-├── README.md, ROADMAP.md, CHANGELOG.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, AUTHORS.md, CITATION.cff
-├── LICENSE-APACHE, LICENSE-MIT, THIRD-PARTY-NOTICES.md, licenses/ (LGPL/GPL texts for the `cabac` component that every build contains)
-├── docs/
-│   ├── INSTALL.md, GUIDE.md, V1-CONTRACT.md, DISTRIBUTION-POLICY.md, PROVENANCE.md, RELEASE-PROCESS.md
-│   ├── DESIGN-AGENT-FIRST.md          what an AI agent needs from an archiver + how we build it (requirements R1–R24, API, Rust architecture, open checks, milestones)
-│   ├── spec/TSAUR-FORMAT-SPEC-v1.0.md   format specification (v1.0, frozen; implementation notes per section)
-│   ├── design/, review/               volume sets, trust contract, two-device plan; review package and the verification reports
-│   └── brand/                         logo (intellectual T-rex), SVG + PNG, social preview
-├── tsaur/                             Rust reference implementation (workspace)
-│   ├── crates/tsaur-core              format, chunking, codecs + filters, containers, crypto, manifest, pieces/parity, volumes, transfer, TLS, canonical views (library)
-│   │   └── tests/golden/              the frozen golden archives and their inputs
-│   └── crates/tsaur-cli               the `tsaur` command-line tool and the `tsaur mcp` server
-├── tools/                             release gate, packaging, guide checker, cross-build compatibility check
-├── prototype/                         Python proof-of-concept (`tsaurproto`, `.tsrp` archives) used to validate ideas
-└── benchmarks/                        corpus generators, benchmark runners, results, corpus licenses
-```
+T-saur fits when (each point is a v1.0 promise, `docs/V1-CONTRACT.md` §1):
+
+- files inside an archive must be listed, searched, read by line or byte range, or cited, without extracting them,
+  from a shell or from an agent over MCP (P6; `docs/GUIDE.md` §6);
+- the same inputs must always give the same archive bytes, and every restored byte must be hash-verified (P1, P2);
+- a collection has many versions of the same documents: chunk deduplication, delta coding and incremental archives
+  by reference (`pack --ref`) store only what is new (measurements below);
+- an archive must survive the loss of some of the drives it is spread over (`volumes split`, any N of N + M) or
+  move between two machines you control, over pinned TLS (P4, P5);
+- encryption is needed without any service: passphrase or hybrid X25519 + ML-KEM-768 recipients, per-blob
+  authenticated (P7, P9).
+
+T-saur is not the right tool, today, when:
+
+- the archive must open in other software: `.tsr` is its own format (`docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` §3), the
+  Rust reference implementation is the only reader, and a conformance suite for other implementations is a roadmap
+  item (`ROADMAP.md`, "Ecosystem");
+- symbolic or hard links must be preserved: links are skipped when packing and never created when unpacking
+  (`docs/V1-CONTRACT.md` §3);
+- an archive must be updated in place, or you need peer discovery, NAT traversal, a GUI or shell integration: all
+  explicitly outside v1.0 (`docs/V1-CONTRACT.md` §3; in-place update is answered by `tsaur update` in roadmap 1.2);
+- executables are most of the input: 7-Zip's BCJ2 still leads by 1–2 points (measurements below);
+- an independently reviewed implementation is required: every check so far was run by the producer of the code
+  (`docs/V1-CONTRACT.md` §6), the outside review is an open item of the v1.0 gate (`ROADMAP.md`), and macOS is
+  covered by CI but not declared verified (`docs/V1-CONTRACT.md` §5).
 
 ## Quick start
 
 Release packages (`tsaur-<version>-<platform>-lite.zip`; the full build with Lepton JPEG recompression is built
 from source, see `docs/DISTRIBUTION-POLICY.md`) contain the binary, this documentation and the licenses; `docs/GUIDE.md` walks through packing,
 verifying, restoring, volumes and transfers, and every command in it is executed by `tools/check_guide.py` before a
-release. From source:
+release. No version tag has been pushed yet, so no package exists today (`ROADMAP.md`, "Step 0"): build from source
+(Rust 1.87 or newer and a C toolchain, `docs/INSTALL.md`):
 
 ```bash
 cd tsaur
@@ -130,11 +152,23 @@ side refuses a fingerprint even when it is pinned or allowed, and `--allow-set <
 to one set only (the others are answered like unknown sets). Trust contract and limits: `docs/design/VOLUME-TRUST.md`,
 `docs/design/VOLUME-SETS.md` §8.
 
-### For agents: the MCP server
+### Python prototype and benchmark scripts
+
+Python prototype and benchmark (Python 3.12+ with `zstandard`, `cbor2`, `PyNaCl`, `numpy`, `python-docx` and `PyMuPDF`;
+PyMuPDF is AGPL-licensed and used only by the corpus builder, never by the Rust implementation):
+
+```bash
+python benchmarks/build_corpus.py
+python prototype/bench.py
+python benchmarks/build_extra_corpora.py   # optional real-world / x86-64 / ARM64 corpora (not redistributed)
+python benchmarks/bench_rust.py
+```
+
+## For AI agents: the MCP server
 
 `tsaur mcp` serves the same operations over the Model Context Protocol on stdin/stdout. It speaks both the current
-per-request versioning (revision 2026-07-28, `server/discover`) and the legacy `initialize` handshake, so any MCP client
-can use it. Archives can only be opened below the directories given with `--root` (default: the current directory).
+per-request versioning (revision 2026-07-28, `server/discover`) and the legacy `initialize` handshake, so clients of
+either protocol era can use it. Archives can only be opened below the directories given with `--root` (default: the current directory).
 
 ```bash
 claude mcp add tsaur -- /path/to/tsaur mcp --root /data/archives
@@ -151,18 +185,39 @@ base64, a citation URI in the structured result), `tsaur_grep`, `tsaur_diff`, `t
 `tsaur://<archive file name>/<entry path>`. Every byte returned is hash-verified first, and every tool description tells
 the model that archive content is untrusted data, never instructions.
 
-Python prototype and benchmark (Python 3.12+ with `zstandard`, `cbor2`, `PyNaCl`, `numpy`, `python-docx` and `PyMuPDF`;
-PyMuPDF is AGPL-licensed and used only by the corpus builder, never by the Rust implementation):
+Agent-side operations in the CLI and the MCP server: `list --md` (token-budgeted view), `info`, `stat`, `grep` inside
+the archive without extracting, `read --bytes/--lines`, `read --view canonical` (DOCX → Markdown, PDF → text, generated
+in Rust without external tools, labelled as semantic/non-bit-exact, served from the stored view when the archive was
+packed with `--canonical`), `diff` between two archives (entries added,
+removed, changed; chunks the older archive already holds, i.e. what `--ref` would save), citation URIs
+`tsaur://<merkle-root>/<path>#L10-20` in `stat`, `list` and MCP reads, `unpack --entry <glob>`, `verify --json`,
+`pieces`/`recover`, `--ref` for incremental archives, stable exit codes (1 I/O, 2 corrupt, 3 policy, 4 limit,
+5 missing, 6 crypto, 7 invalid). Why an archiver for agents looks like this, from the agent's own point of view:
+`docs/DESIGN-AGENT-FIRST.md`.
 
-```bash
-python benchmarks/build_corpus.py
-python prototype/bench.py
-python benchmarks/build_extra_corpora.py   # optional real-world / x86-64 / ARM64 corpora (not redistributed)
-python benchmarks/bench_rust.py
-```
+## How it differs from ZIP, 7z, RAR and tar + zstd
 
-## What the measurements show (`benchmarks/RESULTS.md`, `benchmarks/RESULTS-rust.md`)
+Only what the repository documents and measures; the table of what T-saur takes from each earlier format, and what
+it leaves behind, is in `docs/DESIGN-AGENT-FIRST.md` §3.
 
+- **Compressed containers are opened, not stored.** ZIP, 7z and RAR see DOCX and PDF as opaque, already-compressed
+  bytes; T-saur inverts their deflate streams (preflate) and JPEGs (Lepton), compresses the real content and rebuilds
+  the original bit-exact, or stores the file raw when the rebuild does not verify (`CONTRIBUTING.md`, rule 3).
+- **Random access without giving up the solid ratio.** The default is 64 KiB chunks in 1 MiB blocks: per-block access
+  at a ratio close to a solid archive (table below); `--solid` and `--granular` move along that trade-off.
+- **Versions cost about the size of the edit.** Chunk deduplication, delta coding against earlier content and
+  incremental archives by reference (`pack --ref base.tsr`); neither the ZIP nor the RAR format offers an equivalent.
+- **Every byte is verified before use.** BLAKE3 per chunk, per entry and per section; readers of untrusted archives
+  never return unverified bytes and never write outside the destination (`SECURITY.md`).
+- **Encryption is authenticated, per blob, with post-quantum recipients**, and separate from transport encryption
+  (`docs/V1-CONTRACT.md` P7).
+- **Recovery is part of the format**: `.pieces`/`.par` sidecars and self-describing N + M volume sets
+  (`docs/design/VOLUME-SETS.md`), not a separate tool.
+- **Deterministic**: the same inputs, options and build give the same bytes on every platform (`docs/V1-CONTRACT.md` P2).
+
+## What the measurements show
+
+Full tables and command lines: `benchmarks/RESULTS.md`, `benchmarks/RESULTS-rust.md`.
 Same corpora for everything: A = 10 unrelated files (.md/.txt/.docx/.pdf, 1.54 MB, 57 % of it an image-heavy PDF);
 B = A plus 5 edited versions (2.19 MB). 7-Zip 26.03 and WinRAR 7.23 run through their CLIs.
 
@@ -251,20 +306,83 @@ Offline distribution: `volumes split/inspect/join/repair` stripe an archive acro
 parity (any N of N + M volumes rebuild it, self-describing volumes, byte-identical repair; see the benchmark section
 "Offline volume set" in `benchmarks/RESULTS-rust.md`).
 
-Agent-side operations in the CLI and the MCP server: `list --md` (token-budgeted view), `info`, `stat`, `grep` inside
-the archive without extracting, `read --bytes/--lines`, `read --view canonical` (DOCX → Markdown, PDF → text, generated
-in Rust without external tools, labelled as semantic/non-bit-exact, served from the stored view when the archive was
-packed with `--canonical`), `diff` between two archives (entries added,
-removed, changed; chunks the older archive already holds, i.e. what `--ref` would save), citation URIs
-`tsaur://<merkle-root>/<path>#L10-20` in `stat`, `list` and MCP reads, `unpack --entry <glob>`, `verify --json`,
-`pieces`/`recover`, `--ref` for incremental archives, stable exit codes (1 I/O, 2 corrupt, 3 policy, 4 limit,
-5 missing, 6 crypto, 7 invalid).
+## Questions and answers
+
+### Is a `.tsr` archive encrypted?
+
+Only when packed with `--password` or `--to recipient.pub`. Otherwise nothing in it is encrypted: anyone holding the
+file, its volumes or its pieces can read the content, the names and the hashes (`docs/GUIDE.md` §3).
+
+### Can 7-Zip, WinRAR or `tar` open a `.tsr` file?
+
+No. `.tsr` is its own format (header `TSR\x1A`, `docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` §3) and `tsaur` is its only
+reader today. The specification is CC-BY-4.0 and the golden archives are CC0, so a second implementation can be
+written and checked against them (`docs/V1-CONTRACT.md` §2).
+
+### Is the format stable?
+
+Format v1 is frozen: v1 readers accept exactly version 1, unknown ids are refused rather than skipped, and the golden
+archives in `tsaur/crates/tsaur-core/tests/golden/` are the reference that every v1 reader and writer must reproduce
+(`docs/V1-CONTRACT.md` §2). The version number 1.0.0-rc.1 refers to the software; the format is already v1.
+
+### Which build do I want, lite or full?
+
+Lite (the recommended download) writes archives every build can read; full adds Lepton JPEG recompression, and
+archives containing recompressed JPEGs need the full build to open (`docs/DISTRIBUTION-POLICY.md`). Both contain the
+LGPL-3.0 component `cabac` (see [License](#license)).
+
+### Has the code been reviewed by someone other than its author?
+
+Not yet. The checks recorded in `docs/review/` were run by the producer of the code, which is verification, not an
+independent audit (`docs/V1-CONTRACT.md` §6); `docs/review/REVIEW-PACKAGE.md` is the package prepared for an outside
+evaluator and that review is an open item of the v1.0 gate (`ROADMAP.md`).
+
+### Does `tsaur` connect to anything or write outside the directories I name?
+
+No. It makes no network connection unless you run `tsaur volumes serve` or `fetch`, and it writes nothing outside the
+paths on the command line: no registry entries, configuration or cache (`docs/INSTALL.md`; `CONTRIBUTING.md`, rule 7).
+
+### What happens to symbolic links?
+
+They are skipped when packing and never created when unpacking; storing them is roadmap item 1.2 (`docs/GUIDE.md` §2,
+`ROADMAP.md`).
+
+### How much of this was written with AI assistance?
+
+The code, the tests, the benchmark tooling and most of the documentation were produced with substantial help from
+Anthropic's Claude under the maintainer's direction; `AUTHORS.md` states this so that nobody mistakes the volume of
+the work for a team that does not exist, and `docs/PROVENANCE.md` records what was checked before publication.
+
+### How do I cite it?
+
+`CITATION.cff` at the repository root (GitHub shows it under "Cite this repository").
+
+## Repository layout
+
+```
+.
+├── README.md, ROADMAP.md, CHANGELOG.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, AUTHORS.md, CITATION.cff
+├── LICENSE-APACHE, LICENSE-MIT, THIRD-PARTY-NOTICES.md, licenses/ (LGPL/GPL texts for the `cabac` component that every build contains)
+├── docs/
+│   ├── INSTALL.md, GUIDE.md, V1-CONTRACT.md, DISTRIBUTION-POLICY.md, PROVENANCE.md, RELEASE-PROCESS.md
+│   ├── DESIGN-AGENT-FIRST.md          what an AI agent needs from an archiver + how we build it (requirements R1–R24, API, Rust architecture, open checks, milestones)
+│   ├── spec/TSAUR-FORMAT-SPEC-v1.0.md   format specification (v1.0, frozen; implementation notes per section)
+│   ├── design/, review/               volume sets, trust contract, two-device plan; review package and the verification reports
+│   └── brand/                         logo (intellectual T-rex), SVG + PNG, social preview
+├── tsaur/                             Rust reference implementation (workspace)
+│   ├── crates/tsaur-core              format, chunking, codecs + filters, containers, crypto, manifest, pieces/parity, volumes, transfer, TLS, canonical views (library)
+│   │   └── tests/golden/              the frozen golden archives and their inputs
+│   └── crates/tsaur-cli               the `tsaur` command-line tool and the `tsaur mcp` server
+├── tools/                             release gate, packaging, guide checker, cross-build compatibility check
+├── prototype/                         Python proof-of-concept (`tsaurproto`, `.tsrp` archives) used to validate ideas
+└── benchmarks/                        corpus generators, benchmark runners, results, corpus licenses
+```
 
 ## Security
 
 See `SECURITY.md`: every byte is authenticated before use, resources are bounded before allocation, entry paths cannot
 escape the destination, encryption is authenticated per blob, and archive content is always presented to models as
-data. Vulnerabilities go through GitHub private vulnerability reporting once the repository is public.
+data. Vulnerabilities go through the private reporting channel described in `SECURITY.md`, never a public issue.
 
 ## License
 
