@@ -27,8 +27,10 @@ git log --oneline main | wc -l                                                  
 git rev-list --max-parents=0 main                                                 # the new import commit
 ```
 
-Rehearsal result: tree at the tip identical (`5806788…`), 33 commits, zero commits touching the
-removed paths, new root `29bc672` in place of `16eeeec`. Then:
+Rehearsal result: tree at the tip identical, 33 commits at the time, zero commits touching the
+removed paths, new root `29bc672` in place of `16eeeec`. **Executed on 2026-09-25** on the
+43-commit history (`docs/PROVENANCE.md` has the record), with a mailmap that also normalised
+the author and committer identities. Then:
 
 1. `git remote add origin https://github.com/iulianbondari/t-saur && git push --force origin main`
    (the ruleset is not active yet; this is the one forced push, recorded here).
