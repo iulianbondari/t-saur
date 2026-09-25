@@ -25,8 +25,11 @@ jobs:
             tag: windows-x64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # third-party actions pinned to commit SHAs (the tag is in the comment)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch, 2026-09
+        with:
+          toolchain: stable
       - name: Build the lite binary
         run: cargo build --release --no-default-features
         working-directory: tsaur
@@ -48,7 +51,7 @@ jobs:
           cp docs/design/VOLUME-SETS.md docs/design/VOLUME-TRUST.md "pkg/$name/docs/design/"
           (cd pkg && python3 -c "import shutil,sys; shutil.make_archive(sys.argv[1], 'zip', '.', sys.argv[1])" "$name")
           (cd pkg && python3 -c "import hashlib,sys; p=sys.argv[1]+'.zip'; print(hashlib.sha256(open(p,'rb').read()).hexdigest()+'  '+p)" "$name" > "$name.zip.sha256")
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: package-${{ matrix.tag }}
           path: pkg/*.zip*
@@ -57,14 +60,14 @@ jobs:
     needs: lite-packages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: package-*
           merge-multiple: true
           path: packages
       - name: Combined checksum list
         run: cat packages/*.sha256 > packages/SHA256SUMS && cat packages/SHA256SUMS
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           draft: true
           prerelease: ${{ contains(github.ref_name, '-') }}

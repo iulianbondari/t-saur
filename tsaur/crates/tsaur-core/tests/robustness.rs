@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tsaur_core::transfer::{self, FetchOptions, Server, Want};
+use tsaur_core::transfer::{self, FetchOptions, Server, ServerLimits, Want};
 use tsaur_core::volumes::{self, SplitOptions, VolumeSet};
 use tsaur_core::{pack, PackOptions, Reader};
 
@@ -310,8 +310,15 @@ fn volume_descriptor_decoding_and_validation_never_panic() {
 #[test]
 fn server_survives_damaged_request_lines_and_still_serves_afterwards() {
     let l = lab("requests");
-    let server = Server::bind(&l.volume_paths, "127.0.0.1:0").unwrap();
+    // The parser is the target, not the per-address request rate (covered by
+    // tests/transfer_limits.rs). The campaign is a tight sequential loop from one address; on a
+    // fast runner it exceeds the default 200 requests per second, the token bucket empties and
+    // the check after the campaign is refused with 429. So this server admits any rate, and the
+    // test fails if the limiter ever fires anyway.
+    let limits = ServerLimits { max_requests_per_second: 1_000_000, ..ServerLimits::default() };
+    let server = Server::bind_with(&l.volume_paths, "127.0.0.1:0", limits).unwrap();
     let addr = server.local_addr().unwrap().to_string();
+    let mut rate_limited = 0usize;
     let stop = Arc::new(AtomicBool::new(false));
     let flag = stop.clone();
     std::thread::spawn(move || server.run(flag).unwrap());
@@ -337,12 +344,16 @@ fn server_survives_damaged_request_lines_and_still_serves_afterwards() {
         let _ = BufReader::new(&mut s).read_line(&mut status);
         if status.starts_with("OK ") {
             "served"
+        } else if status.starts_with("ERR 429 ") {
+            rate_limited += 1;
+            "rate limited"
         } else if status.starts_with("ERR ") {
             "refused"
         } else {
             "closed"
         }
     });
+    assert_eq!(rate_limited, 0, "the campaign must exercise the parser, never the request-rate limiter");
     assert_eq!(transfer::list_peer(&addr, None, None).unwrap().len(), 1, "the server still answers after the campaign");
     stop.store(true, Ordering::Relaxed);
     let _ = std::fs::remove_dir_all(&l.dir);
