@@ -53,13 +53,15 @@ jobs:
       - name: Determinism fixture
         shell: bash
         run: |
-          mkdir -p /tmp/det && printf 'the same input must give the same archive everywhere\n%.0s' {1..5000} > /tmp/det/a.txt
-          head -c 200000 /dev/urandom > /tmp/det/b.bin 2>/dev/null || python3 -c "import os;open('/tmp/det/b.bin','wb').write(bytes(range(256))*800)"
-          printf 'fixed bytes for the determinism check\n%.0s' {1..2000} > /tmp/det/b.bin
-          ./tsaur/target/release/tsaur pack /tmp/det.tsr /tmp/det --codec zstd
-          python3 - <<'EOF'
+          # relative paths on purpose: on the Windows runner the shell and Python resolve /tmp differently
+          py=python3; bin=tsaur
+          if [ "$RUNNER_OS" = "Windows" ]; then py=python; bin=tsaur.exe; fi
+          mkdir -p det && printf 'the same input must give the same archive everywhere\n%.0s' {1..5000} > det/a.txt
+          printf 'fixed bytes for the determinism check\n%.0s' {1..2000} > det/b.bin
+          "./tsaur/target/release/$bin" pack det.tsr det --codec zstd
+          "$py" - <<'EOF'
           import hashlib, pathlib, platform
-          h = hashlib.sha256(pathlib.Path('/tmp/det.tsr').read_bytes()).hexdigest()
+          h = hashlib.sha256(pathlib.Path('det.tsr').read_bytes()).hexdigest()
           pathlib.Path('det-' + platform.system().lower() + '.sha256').write_text(h)
           print(platform.system(), h)
           EOF

@@ -133,9 +133,14 @@ fn request_rate_per_address_is_limited_and_a_fetch_still_completes() {
         }
     }
     let burst_secs = t0.elapsed().as_secs_f64();
+    // the bucket starts full (a burst of 10) and refills at 5 per second while the burst runs;
+    // on a slow machine the burst itself takes seconds, so the bound is computed from the clock
     let admitted_at_most = 10 + (burst_secs * 5.0).ceil() as usize + 1;
     assert!(ok >= 10 && ok <= admitted_at_most, "ok {ok}, refused {refused}, burst took {burst_secs:.2} s");
-    assert!(refused >= 30 - admitted_at_most, "ok {ok}, refused {refused}");
+    assert!(refused >= 30usize.saturating_sub(admitted_at_most), "ok {ok}, refused {refused}, burst took {burst_secs:.2} s");
+    if burst_secs < 1.0 {
+        assert!(refused >= 10, "a fast burst must visibly hit the limit: ok {ok}, refused {refused}, burst took {burst_secs:.2} s");
+    }
     // tokens come back with time
     std::thread::sleep(Duration::from_millis(1200));
     assert!(raw(&addr, "TSXP/1 SETS\n").unwrap().starts_with("OK "));
