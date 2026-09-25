@@ -1,4 +1,4 @@
-# Draft release packages for the lite build (no LGPL code) on every version tag.
+# Draft release packages for the lite build (no Lepton) on every version tag.
 # The release is created as a DRAFT: nothing becomes public until a maintainer reviews the
 # packages, their SHA-256 values and the notes, and publishes it by hand
 # (docs/DISTRIBUTION-POLICY.md §3). The full build is not packaged here on purpose.
@@ -74,7 +74,7 @@ jobs:
           name: T-saur ${{ github.ref_name }} (draft, lite packages)
           body: |
             Draft created by the release workflow; a maintainer reviews the packages and the notes before anything is published.
-            Lite build only (no LGPL code); the full build with Lepton JPEG recompression is available from source (`cargo build --release`), see docs/DISTRIBUTION-POLICY.md.
+            Lite build only (no Lepton); the full build with Lepton JPEG recompression is available from source (`cargo build --release`), see docs/DISTRIBUTION-POLICY.md. Both builds contain the LGPL-3.0 component `cabac` (through `preflate-rs`); the notices and license texts are in the package.
             Verify a download with the SHA-256 in SHA256SUMS before unpacking.
           files: |
             packages/*.zip

@@ -29,13 +29,18 @@ distribution must reproduce). All of these are permissive and are part of every 
 
 ## The LGPL component
 
-`cabac` (context-adaptive binary arithmetic coding) is a dependency of `lepton_jpeg`, the lossless
-JPEG recompressor used for `.jpg` files and `DCTDecode` streams. It is licensed **LGPL-3.0-or-later**
-(the texts are in `licenses/LGPL-3.0.txt` and `licenses/GPL-3.0.txt`, which the LGPL incorporates
-by reference).
+`cabac` (context-adaptive binary arithmetic coding) is a dependency of `preflate-rs`, the library
+that inverts deflate streams so that ZIP/OPC members and PDF `FlateDecode` streams can be
+recompressed and rebuilt bit-exact. It is licensed **LGPL-3.0-or-later** (the texts are in
+`licenses/LGPL-3.0.txt` and `licenses/GPL-3.0.txt`, which the LGPL incorporates by reference).
 
-* It is only part of builds made with the `lepton` Cargo feature (on by default). A build made
-  with `--no-default-features` contains no LGPL code.
+* **It is part of every build.** `preflate-rs` is not optional in `tsaur-core`, and every published
+  version of `preflate-rs` depends on `cabac`; `cargo tree -i cabac` shows the path in the default
+  build and in the lite build alike. (`lepton_jpeg` 0.5.8, the JPEG recompressor of the full build,
+  no longer depends on `cabac`.) Earlier versions of this file, the distribution policy and the
+  README said that the lite build contains no LGPL code; that was wrong and was corrected on
+  2026-09-25 after a dependency audit. The lite build differs from the full build only by the
+  absence of Lepton JPEG recompression.
 * When a binary that contains `cabac` is distributed, the LGPL-3.0 obligations for that component
   apply: prominent notice (this file), the license texts, and — because the library is statically
   linked — the Corresponding Application Code and the Minimal Corresponding Source needed to relink

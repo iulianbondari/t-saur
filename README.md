@@ -268,7 +268,7 @@ patent commitment. Test vectors: CC0. See `CONTRIBUTING.md` before opening a pul
 Dependencies (checked with `cargo metadata`, 246 packages, `THIRD-PARTY-NOTICES.md`): all permissive (MIT /
 Apache-2.0 / BSD / ISC / Zlib / 0BSD / CC0 / Unicode) with one exception: `cabac` (LGPL-3.0-or-later), pulled in by
 `lepton_jpeg` for lossless JPEG recompression. Lepton is therefore a Cargo feature (`lepton`, on by default): `cargo build --release
---no-default-features` gives a binary without LGPL code, which stores JPEGs as they are and cannot open archives that
+--no-default-features` gives a binary without Lepton, which stores JPEGs as they are and cannot open archives that
 contain Lepton segments. Distributed binaries that include the feature carry the LGPL-3.0 obligations for that
 component (source availability and the ability to relink); the format itself only requires a Lepton decoder, for
 which Apache-2.0 implementations exist. No dependency requires an account, a key or a service.

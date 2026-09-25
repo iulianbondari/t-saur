@@ -14,9 +14,10 @@ readme = "../../README.md"
 
 [features]
 default = ["lepton"]
-# Lossless JPEG recompression. `lepton_jpeg` (Apache-2.0) depends on `cabac` (LGPL-3.0-or-later);
-# build with `--no-default-features` for a binary without LGPL code (JPEGs are then stored as they are,
-# and archives that contain Lepton segments cannot be opened by such a build).
+# Lossless JPEG recompression (`lepton_jpeg`, Apache-2.0). Build with `--no-default-features` for a
+# binary without Lepton (JPEGs are then stored as they are, and archives that contain Lepton segments
+# cannot be opened by such a build). Note: the LGPL-3.0 crate `cabac` is a dependency of `preflate-rs`
+# and is therefore part of every build; see THIRD-PARTY-NOTICES.md.
 lepton = ["dep:lepton_jpeg"]
 
 [dependencies]

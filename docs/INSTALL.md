@@ -6,8 +6,8 @@ file, and it makes no network connection unless you run `tsaur volumes serve` or
 ## From a release package
 
 1. Download `tsaur-<version>-<platform>-lite.zip` and `SHA256SUMS` from the release page. The
-   **lite** package is the recommended one (no LGPL code; every archive it writes opens in every
-   build). The full build, which recompresses JPEGs, is built from source; see
+   **lite** package is the recommended one (every archive it writes opens in every build; like
+   every build it contains one LGPL-3.0 component, see `THIRD-PARTY-NOTICES.md`). The full build, which recompresses JPEGs, is built from source; see
    `DISTRIBUTION-POLICY.md`.
 2. Check the download before unpacking:
    * Linux/macOS: `sha256sum -c SHA256SUMS --ignore-missing`
@@ -29,7 +29,7 @@ tools on macOS). No CMake or NASM is needed.
 git clone https://github.com/iulianbondari/t-saur.git
 cd t-saur/tsaur
 cargo build --release                        # full build, Lepton JPEG recompression, LGPL notice applies
-cargo build --release --no-default-features  # lite build, no LGPL code
+cargo build --release --no-default-features  # lite build, no Lepton (the LGPL notice applies to both builds)
 ./target/release/tsaur --version
 ```
 

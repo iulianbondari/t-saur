@@ -9,8 +9,8 @@ input (lower is better).
 
 | Build | Cargo command | Contains | Creates | Reads |
 |---|---|---|---|---|
-| **full** (default) | `cargo build --release` | everything, including Lepton (`lepton_jpeg` + `cabac`, LGPL-3.0-or-later) | every archive kind | every valid archive |
-| **lite** | `cargo build --release --no-default-features` | no LGPL code | every archive kind except Lepton segments: JPEG files and `DCTDecode` streams are stored as they are (still bit-exact, just not smaller) | every archive **without** Lepton segments |
+| **full** (default) | `cargo build --release` | everything, including Lepton JPEG recompression (`lepton_jpeg`); like every build it contains `cabac` (LGPL-3.0-or-later) through `preflate-rs` | every archive kind | every valid archive |
+| **lite** | `cargo build --release --no-default-features` | everything except Lepton; still contains `cabac` (LGPL-3.0-or-later) through `preflate-rs` | every archive kind except Lepton segments: JPEG files and `DCTDecode` streams are stored as they are (still bit-exact, just not smaller) | every archive **without** Lepton segments |
 
 Both builds produce byte-identical archives for inputs without JPEG content (checked: the 10-file
 benchmark corpus packs to the same 956,731 bytes with either binary). Volume sets (`.tsrv`) treat
@@ -46,7 +46,8 @@ build or with `pack --no-container`.
 1. **Source** is the primary distribution: Apache-2.0 OR MIT, complete, with `Cargo.lock` pinning
    every dependency version. Anyone can build either configuration.
 2. **The recommended public binary is the lite build**, packaged as `tsaur-<version>-<platform>-lite.zip`.
-   It contains no LGPL code, every archive it writes opens in every build, and a redistributor
+   Every archive it writes opens in every build. It contains, like every build, the LGPL-3.0
+   component `cabac` through `preflate-rs` (see §3.4 and `THIRD-PARTY-NOTICES.md`), so a redistributor
    (someone bundling `tsaur` into a product or an image) takes on no obligation beyond the
    permissive notices. Its cost is measurable and documented: JPEG files and PDF images are
    stored as they are (`corpus_real`: 87.4 % instead of 78.3 %; everything else is identical).
@@ -54,17 +55,17 @@ build or with `pack --no-container`.
    who want Lepton JPEG recompression and accept that archives containing recompressed JPEGs need
    the full build to open (`pack --no-lepton` in the full build writes universal archives). The
    package carries `THIRD-PARTY-NOTICES.md`, `licenses/LGPL-3.0.txt` and `licenses/GPL-3.0.txt`.
-4. **LGPL obligations of the full binary**, as the project reads LGPL-3.0 §4 for a statically
-   linked library: prominent notice (`THIRD-PARTY-NOTICES.md`), the license texts, and the
+4. **LGPL obligations of every binary** (both builds contain `cabac` through `preflate-rs`; until
+   2026-09-25 this section wrongly spoke of the full binary only), as the project reads LGPL-3.0 §4
+   for a statically linked library: prominent notice (`THIRD-PARTY-NOTICES.md`), the license texts, and the
    Corresponding Application Code in a form that permits relinking, which the complete
    Apache/MIT source with `Cargo.lock` provides (`cargo vendor` reproduces the exact `cabac`
    sources). **This reading has not been confirmed by counsel, and the maintainer decided on
    2026-09-25 not to seek that confirmation.** It remains the material uncertainty of this policy:
-   no test can settle it, which is why the lite build is the recommended download and the full
-   build is an explicit choice with its notices attached. A distributor of the full binary who
-   wants certainty should obtain their own legal advice; the project does not claim that the
-   question is closed, and replacing the LGPL component with a permissively licensed JPEG
-   recompressor is on the roadmap so that the question disappears.
+   no test can settle it, which is why every package carries the notices, the license texts and a
+   pointer to the complete sources. A distributor of either binary who wants certainty should
+   obtain their own legal advice; the project does not claim that the question is closed, and
+   removing `cabac` from every build is roadmap item 1.1 so that the question disappears.
 5. **Packages are built and checked by `tools/package.py`**: each zip is unpacked in a clean
    directory and the packaged binary runs every command of `docs/GUIDE.md`; sizes and SHA-256
    values are written to `dist/SHA256SUMS` and `dist/PACKAGES.md`. Nothing is uploaded by the

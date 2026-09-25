@@ -6,7 +6,7 @@ binary from a release package or from `cargo build --release`. Every `bash` bloc
 marked *not run automatically* is executed by `tools/check_guide.py` against the packaged
 binary before a release, in the order shown, starting from an empty directory.
 
-Two builds exist (`docs/DISTRIBUTION-POLICY.md`): **lite** (the default download, no LGPL code,
+Two builds exist (`docs/DISTRIBUTION-POLICY.md`): **lite** (the default download, no Lepton,
 writes archives every build can read) and **full** (adds Lepton JPEG recompression; archives
 that contain recompressed JPEGs need the full build to open). The commands are the same.
 
