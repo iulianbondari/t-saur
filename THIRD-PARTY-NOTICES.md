@@ -47,9 +47,9 @@ recompressed and rebuilt bit-exact. It is licensed **LGPL-3.0-or-later** (the te
   a modified `cabac` into the application (LGPL-3.0 §4). T-saur's complete source, its pinned
   dependency versions (`Cargo.lock`) and the build instructions (`CONTRIBUTING.md`) provide that:
   anyone can obtain the sources with `cargo vendor` and rebuild the binary with a modified library.
-* The T-saur format does not depend on this library: a Lepton segment is a standard Lepton stream,
-  for which Apache-2.0 implementations exist. Only the Rust reference implementation's default
-  build uses `cabac`.
+* The T-saur format does not depend on this library: deflate inversion and Lepton segments are
+  described by the specification, and a second implementation may use any coder. Only the Rust
+  reference implementation links `cabac`, in both of its builds.
 
 This is a description of the project's understanding of its obligations, not legal advice; a
 distributor who wants certainty should confirm it with counsel.

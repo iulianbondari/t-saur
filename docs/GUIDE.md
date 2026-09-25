@@ -12,7 +12,8 @@ that contain recompressed JPEGs need the full build to open). The commands are t
 
 ## 1. Install
 
-1. Download the package for your platform (`tsaur-<version>-<platform>-lite.zip` or `-full.zip`)
+1. Download the package for your platform (`tsaur-<version>-<platform>-lite.zip`; the full build is
+   built from source, see `docs/DISTRIBUTION-POLICY.md`)
    and `SHA256SUMS`, then check the hash before unpacking:
    `sha256sum -c SHA256SUMS` (Linux/macOS) or `Get-FileHash tsaur-*.zip` (PowerShell) compared
    with the listed value.

@@ -10,7 +10,11 @@ on:
     # below: YAML anchors are not relied on in workflow files)
     paths-ignore:
       - "docs/**"
-      - "**.md"
+      - "*.md"
+      - "benchmarks/**.md"
+      - "prototype/**.md"
+      - "tsaur/README.md"
+      - ".github/**.md"
       - "CITATION.cff"
       - "LICENSE-*"
       - "licenses/**"
@@ -22,7 +26,11 @@ on:
   pull_request:
     paths-ignore:
       - "docs/**"
-      - "**.md"
+      - "*.md"
+      - "benchmarks/**.md"
+      - "prototype/**.md"
+      - "tsaur/README.md"
+      - ".github/**.md"
       - "CITATION.cff"
       - "LICENSE-*"
       - "licenses/**"
@@ -39,6 +47,10 @@ on:
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'push' }}
+
+# the workflow token can only read the repository; artifacts need nothing more
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always

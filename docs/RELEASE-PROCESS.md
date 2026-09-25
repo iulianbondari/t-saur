@@ -54,7 +54,12 @@ the author and committer identities. Then:
    immutability on, rebase merging off, "always suggest updating pull request branches" on,
    automatic deletion of head branches on, Dependabot alerts, dependency graph and malware
    alerts on, security and version updates off (updates go through pull requests and the gate).
-5. Wikis stay off (documentation lives in `docs/`); Discussions are the maintainer's call.
+5. Settings → Advanced Security → *Private vulnerability reporting* → Enable: `SECURITY.md` and the
+   issue template send reporters there, and it is off by default on a newly public repository.
+6. Repository page → *About* → topics (`archive-format`, `archiver`, `compression`, `rust`,
+   `content-addressed`, `deduplication`, `erasure-coding`, `ai-agents`, `mcp`,
+   `post-quantum-cryptography`, `blake3`, `zstd`) and, if wanted, a homepage.
+7. Wikis stay off (documentation lives in `docs/`); Discussions are the maintainer's call.
 
 ### A3. Independent review
 

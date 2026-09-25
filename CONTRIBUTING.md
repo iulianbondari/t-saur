@@ -39,8 +39,9 @@ The Rust workspace lives in `tsaur/` (`tsaur-core` library + `tsaur` CLI). Bench
 7. **No secrets, no telemetry.** The CLI never phones home and never writes credentials to disk
    except the key files the user explicitly asks `keygen` to create.
 8. **Permissive dependencies only.** New dependencies must be MIT / Apache-2.0 / BSD-class; the one
-   LGPL component (`cabac`, via the optional `lepton` feature) is documented in the README, and any
-   change to that situation goes through the README and CHANGELOG. Check with `cargo metadata`.
+   LGPL component (`cabac`, reached through `preflate-rs` in every build) is documented in
+   `THIRD-PARTY-NOTICES.md` and the README, and any change to that situation goes through both
+   and the CHANGELOG. Check with `cargo metadata`.
 
 ## Adding a codec or a filter
 

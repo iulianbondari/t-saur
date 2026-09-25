@@ -19,7 +19,7 @@
 | G4 | **Secure by construction.** Authenticated encryption per chunk, envelope keys, multi-recipient (hybrid post-quantum), signed manifests, encrypted metadata, resource limits against decompression bombs, no path traversal by design. | Every legacy format has at least one of: unauthenticated encryption (7z), weak KDF (WinZip AES), plaintext metadata, Zip Slip. |
 | G5 | **Honest fidelity.** Two explicit modes: `bit-exact` (lossless bytes, verified by hash) and `canonical` (semantic-lossless derivative for agents). Never blur the two. | Lossy "AI compression" presented as lossless would be a trust failure. |
 | G6 | **Deterministic and reproducible.** Same inputs + same parameters ⇒ byte-identical archive ⇒ same root hash. | Enables cross-archive dedup, caching, and audit. |
-| G7 | **Open.** Spec under CC-BY-4.0, reference implementation Apache-2.0 (patent grant), no proprietary codec. | RAR's proprietary compressor limited its ecosystem; ZIP and zstd won by openness. |
+| G7 | **Open.** Spec under CC-BY-4.0, reference implementation Apache-2.0 OR MIT (the Apache option carries a patent grant), no proprietary codec. | RAR's proprietary compressor limited its ecosystem; ZIP and zstd won by openness. |
 
 Non-goals (v0.1): GUI, Windows shell integration, self-extracting executables, in-place update of archives (append-only journaling is v0.2), compression of already-compressed media beyond container awareness.
 
@@ -295,7 +295,7 @@ Prototype numbers (`benchmarks/RESULTS.md`, 10 mixed files, 1.54 MB): bit-exact 
 - **v1 readers accept exactly `version = 1`** in `.tsr` headers and `.tsrv` volume headers. Any other value is refused with "unsupported format version N" (CLI exit code 2), never read with v1 rules: a future major version may change anything after the magic and the version field. For `.tsrv` this holds even when the trailer of the file is intact (a volume whose header names another version is not treated as a damaged v1 volume).
 - **Writer freeze.** The reference writer records `tsaur-core/1.0` as generator in manifests, derived views and volume descriptors; the same inputs, options and build produce byte-identical archives in every 1.x release (`tests/golden.rs` compares the writer's output with the committed golden archives). A change of those bytes is a format event: it needs a new generator string, regenerated golden archives, a CHANGELOG entry and compatibility tests, and it may not make v1 readers misread anything.
 - **Readers stay backward compatible within v1**: every archive written by any 1.x release opens in every later 1.x reader; entries that need an optional reader feature (today only Lepton segments, `requires: lepton`) are reported by name, never silently skipped.
-- Codec ids ≥ 128 are private; ≥ 64 are experimental (registered in `docs/spec/registry.md`). Filter ids 8–15 are private (the high nibble of `f` is the parameter, so at most 16 filter ids exist in v1; a later revision may add a `filters` array for chains).
+- Codec ids ≥ 128 are private; ≥ 64 are experimental (a registry file under `docs/spec/` will be added with the first experimental id). Filter ids 8–15 are private (the high nibble of `f` is the parameter, so at most 16 filter ids exist in v1; a later revision may add a `filters` array for chains).
 - Framing (header, trailer, section table with CRC-32, BLAKE3 per section) and the recipients and signature sections are readable **without credentials**, so a reader can report how an archive can be unlocked (`stanzas`) and by which key it was signed before asking for a passphrase (`tsaur info` on a locked archive).
 - Reserved: journaling/append (v0.2), multi-archive "constellations" (v0.3), streaming pack over the network.
 
@@ -303,7 +303,7 @@ Prototype numbers (`benchmarks/RESULTS.md`, 10 mixed files, 1.54 MB): bit-exact 
 
 ## 13. Open questions (to decide before v0.2)
 
-1. Name and extension: the former working name (`.aix`) conflicted with IBM's live AIX® trademark (class 9) and was taken on PyPI/npm/crates.io/GitHub. Decision (founder, 2026-09-22): **T-saur** — packages `tsaur` (free on PyPI/npm/crates.io), GitHub org `tsaur-format`, extension `.tsr`, media type `application/vnd.tsaur+cbor` (to register). Magic bytes will become `TSR\x1A` before the first public release; formal trademark search still pending.
+1. Name and extension: the former working name (`.aix`) conflicted with IBM's live AIX® trademark (class 9) and was taken on PyPI/npm/crates.io/GitHub. Decision (maintainer, 2026-09-22): **T-saur**, packages `tsaur`, extension `.tsr`, magic bytes `TSR\x1A` (in force since v1). Decision (maintainer, 2026-09-25): no name reservations and no trademark search; the media type `application/vnd.tsaur+cbor` is not registered.
 2. Default chunk profile for mixed document sets: 64 KiB (P2P dedup) vs 256 KiB (less metadata) — measure on larger corpora.
 3. Whether the semantic index is inline by default (bigger archive) or sidecar (simpler streaming).
 4. Model-predictive codec: which small open model to pin first (RWKV/Qwen-class, ≤ 1 B params, integer inference) and how to guarantee determinism across CPUs.

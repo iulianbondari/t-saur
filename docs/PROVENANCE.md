@@ -11,7 +11,7 @@ history stays private, and what was checked before publication.
 | source | the private development repository of Iulian Bondari, tag `v1.0.0-rc.1` = commit `9e0fe7957edc44b2bb32aec5962c7ddbfa7bf137` (24 September 2026), plus the publication-preparation changes listed below (documents and tooling; no change to the archive code or format) |
 | source archive of the tag | `tsaur-1.0.0-rc.1-src.zip`, SHA-256 `b5d25a6460921d8a5ef09175b37ac19c1daaa1b4918e52ff8cac355122eabf0c` (176 files), kept by the maintainer |
 | verification of the tag | `docs/review/RC1-VERIFICATION-REPORT.md` (all producer checks passed on Windows 11 x64) |
-| verification on a second operating system | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md` (all producer checks passed on Linux x64, commit `a8ef56e` of this repository, whose archive code is the imported snapshot plus lint-only changes) |
+| verification on a second operating system | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md` (all producer checks passed on Linux x64 on commit `45c6c56` of this repository, printed as `a8ef56e` in the report because the history was rewritten afterwards; its archive code is the imported snapshot plus lint-only changes) |
 | import commit | the first commit of this repository: `16eeeec879ecad3c271fb02dcb47aa76a69ea3dc` in the original history, `29bc6727bc3f476a03d7495c22df08af1001760c` after the rewrite of 2026-09-25 (below); its SHA-256 manifest of every imported file is in the import report the maintainer keeps with the source archive |
 
 Publication-preparation changes after the tag: community files (`CODE_OF_CONDUCT.md`,
