@@ -930,7 +930,7 @@ pub fn repair(paths: &[PathBuf], out_dir: Option<&Path>) -> Result<RepairReport>
                 w.write_all(piece)?;
             }
         }
-        for ((vi, _), mut w) in targets.iter().zip(writers.into_iter()) {
+        for ((vi, _), mut w) in targets.iter().zip(writers) {
             w.write_all(&desc)?;
             w.write_all(&encode_trailer(HEADER_LEN as u64 + set.payload_len(*vi), desc.len() as u64, &desc_hash, *vi as u16))?;
             w.flush()?;
