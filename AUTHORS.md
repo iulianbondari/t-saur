@@ -13,10 +13,11 @@ jurisdiction. Until that question is settled for this project, the license files
 contributors" rather than a single person; see `docs/PROVENANCE.md` for what was checked before
 publication and what remains open.
 
-**Research corpus and dependencies.** The research notes in `docs/research/` summarise published
-sources and cite them; the benchmark corpus in `benchmarks/corpus/` is built from texts whose
-licenses are listed in `benchmarks/CORPUS-LICENSES.md`; the Rust dependencies and their licenses
-are listed in `THIRD-PARTY-NOTICES.md`.
+**Corpus and dependencies.** The benchmark corpus in `benchmarks/corpus/` is built from texts
+whose licenses are listed in `benchmarks/CORPUS-LICENSES.md`; the Rust dependencies and their
+licenses are listed in `THIRD-PARTY-NOTICES.md`. The research notes that preceded the design are
+the maintainer's working material and are not part of the published tree; the design itself is
+in `docs/DESIGN-AGENT-FIRST.md`, `docs/design/` and the specification.
 
 Contributions are welcome under the terms of `CONTRIBUTING.md`; every contributor keeps the
 copyright in their contribution and licenses it under Apache-2.0 OR MIT like the rest of the

@@ -19,7 +19,19 @@ Publication-preparation changes after the tag: community files (`CODE_OF_CONDUCT
 `benchmarks/CORPUS-LICENSES.md`, issue and pull-request templates, the draft-release workflow),
 neutral copyright lines in the license files, README wording for a public repository, absolute
 local paths replaced by relative ones in reports and tool output, and the removal of the Romanian
-draft notes from the published tree (the English versions in `docs/research/` are the reference).
+draft notes from the published tree.
+
+## Internal material removed from the tree (2026-09-25)
+
+The research notes (`docs/research/`, seven areas plus the naming rounds) and the name-availability
+script (`benchmarks/check_names.sh`) were the maintainer's working material for the design; they
+were removed from the tree before publication and are kept privately. Their conclusions live in
+`docs/DESIGN-AGENT-FIRST.md`, `docs/design/` and the specification. **They are still present in
+this repository's history** (the import commit and the commits up to that date), so before the
+repository is made public the maintainer either rewrites the history to drop them (for example
+with `git filter-repo --path docs/research --path benchmarks/check_names.sh --invert-paths`,
+followed by a forced update of `main`, which is acceptable only while the repository is private)
+or re-creates the public repository from a clean snapshot; this page will record which.
 
 ## Why the history is not published
 
@@ -45,7 +57,8 @@ format to that state independently of any git metadata.
   `benchmarks/CORPUS-LICENSES.md`; Rust dependencies in `THIRD-PARTY-NOTICES.md`; the LGPL
   component and the distribution decision in `docs/DISTRIBUTION-POLICY.md`.
 * The name T-saur was checked for obvious conflicts in registries and package indexes during the
-  naming round (`docs/research/05b-naming-round2-tsaur.md`); that is not a trademark clearance.
+  naming round (September 2026; no product, company or package of that name was found); that is
+  not a trademark clearance.
 
 ## What remains open
 
@@ -54,6 +67,7 @@ format to that state independently of any git metadata.
   copyright, and who holds it, is not settled; the license files therefore name "the T-saur
   contributors" instead of a person until the maintainer settles the question, if necessary with
   legal advice. The license grant (Apache-2.0 OR MIT) is the maintainer's intent in every case.
-* **Trademark.** A formal search (for example TMview and the WIPO Global Brand Database) has not
-  been done; a search without hits would not be a legal clearance either.
+* **Trademark.** The maintainer has decided not to reserve names or to file or search for a
+  trademark: T-saur is used only as the name of a free software project. Anyone who needs a
+  legal clearance of the name has to obtain it themselves.
 * **Independent review, second operating system, LGPL reading**: see `ROADMAP.md`, "v1.0 gate".

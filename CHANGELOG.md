@@ -9,7 +9,9 @@ All notable changes to T-saur are recorded here. The format follows
 Publication preparation after the tag (documents and tooling only): `CODE_OF_CONDUCT.md`,
 `AUTHORS.md` (AI assistance stated), `CITATION.cff`, `docs/INSTALL.md`, `docs/PROVENANCE.md`,
 `benchmarks/CORPUS-LICENSES.md`, issue and pull-request templates, a draft-release workflow for
-the lite packages, neutral copyright lines in the license files, relative paths in tool output.
+the lite packages, neutral copyright lines in the license files, relative paths in tool output;
+on 2026-09-25 the research notes and the name-availability script, the maintainer's working
+material, were removed from the public tree (`docs/PROVENANCE.md`).
 
 - **Format v1 frozen** (`docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` §12, `docs/V1-CONTRACT.md`): v1 readers
   accept exactly version 1 of `.tsr` and `.tsrv` and refuse any other version by name; the writer

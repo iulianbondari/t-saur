@@ -4,5 +4,3 @@
 *.docx binary
 *.tsr binary
 *.tsrp binary
-# not part of the published tree (git archive): working drafts in Romanian
-docs/research/ro/ export-ignore
