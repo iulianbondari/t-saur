@@ -1,11 +1,11 @@
-# Roadmap (updated 2026-09-24)
+# Roadmap (updated 2026-09-25)
 
 ## v1.0 gate (`docs/V1-CONTRACT.md`)
 - [x] format v1 frozen, golden archives, cross-build compatibility check (`tools/compat_check.py`)
 - [x] untrusted-data review of extraction, limits, links, overwrite; robustness campaign on the stable toolchain
 - [x] distribution policy decided (lite recommended, full alongside with notices); packages built and checked from a clean directory (`tools/package.py`)
 - [x] user guide executed end to end before a release (`tools/check_guide.py`)
-- [ ] test suite run on a second operating system (Linux/macOS): CI matrix ready, not yet executed
+- [x] test suite run on a second operating system: release gate executed on Linux x64 (`docs/review/RC1-VERIFICATION-REPORT-linux-x64.md`); CI matrix green on Linux, macOS and Windows with identical determinism hashes (run 36099317045); the release gate itself has not been run on macOS
 - [ ] independent review by another evaluator (`docs/review/REVIEW-PACKAGE.md`)
 - [ ] legal confirmation of the LGPL reading for the full binary (`docs/DISTRIBUTION-POLICY.md` §3.4)
 - [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)

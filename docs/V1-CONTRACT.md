@@ -63,11 +63,22 @@ hard-link restoration (links are skipped when packing and never created when unp
 
 ## 5. Platforms
 
-v1.0 is verified on the platforms where the producer actually ran the full test suite with both
-builds. As of this document that is **Windows 11 x64** (MSVC toolchain). Linux and macOS builds
-are expected to work (the code has no platform-specific paths beyond the standard library) and
-are covered by the CI matrix that activates with the public repository, but they are **not
-declared verified** until someone runs the suite there and records the result.
+v1.0 is verified on the platforms where the producer actually ran the full release gate
+(`tools/release_gate.py`: both builds, both test suites, the robustness campaign, the golden
+archives, the guide, the packages) and recorded the result:
+
+| Platform | What ran | Record |
+|---|---|---|
+| **Windows 11 x64** (MSVC toolchain, rustc 1.93.1) | release gate, 60 s robustness campaign | `docs/review/RC1-VERIFICATION-REPORT.md` |
+| **Linux x64** (glibc 2.39, rustc 1.94.1, cloud container with 4 logical CPUs) | release gate on commit `a8ef56e`, 60 s robustness campaign | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md` |
+
+**macOS** (arm64, GitHub `macos-latest`) has run the CI matrix only (`.github/workflows/ci.yml`,
+run 36099317045 on 2026-09-25: release build, both test suites including the short robustness
+run, clippy, rustfmt, the golden archives read by both binaries, the guide with both binaries,
+and the determinism fixture, whose archive hash was identical on Linux, macOS and Windows). That
+covers the suite but not the release gate, so macOS is **covered by CI, not declared verified**
+until someone runs the gate there and records the result. Windows and Linux ran the same CI
+matrix in that run as well.
 
 ## 6. What "verified" means here
 

@@ -21,8 +21,9 @@ Format v1 is frozen and the candidate is functional: bit-exact archiving and res
 extraction of untrusted archives, offline volume sets with parity, direct exchange between two instances (plain or
 pinned TLS), agent operations with the MCP server, two build configurations. What v1.0 promises, and how each promise
 is checked, is in `docs/V1-CONTRACT.md`; how to use it, in `docs/GUIDE.md`; what each build reads and which one to
-download, in `docs/DISTRIBUTION-POLICY.md`. Verified so far on Windows 11 x64 only, by the producer of the code;
-conditions still open before a public 1.0.0 are listed in `ROADMAP.md` ("v1.0 gate").
+download, in `docs/DISTRIBUTION-POLICY.md`. Verified so far on Windows 11 x64 and Linux x64, by the producer of the
+code (`docs/V1-CONTRACT.md` §5; macOS runs the CI matrix only); conditions still open before a public 1.0.0 are
+listed in `ROADMAP.md` ("v1.0 gate").
 
 **What is encrypted.** An archive is encrypted only when packed with `--password` or `--to recipient.pub`
 (XChaCha20-Poly1305 per blob, Argon2id and/or hybrid X25519 + ML-KEM-768 recipients, optional Ed25519 signature);
