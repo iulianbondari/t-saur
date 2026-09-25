@@ -70,7 +70,7 @@ archives, the guide, the packages) and recorded the result:
 | Platform | What ran | Record |
 |---|---|---|
 | **Windows 11 x64** (MSVC toolchain, rustc 1.93.1) | release gate, 60 s robustness campaign | `docs/review/RC1-VERIFICATION-REPORT.md` |
-| **Linux x64** (glibc 2.39, rustc 1.94.1, cloud container with 4 logical CPUs) | release gate on commit `a8ef56e`, 60 s robustness campaign | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md` |
+| **Linux x64** (glibc 2.39, rustc 1.94.1, cloud container with 4 logical CPUs) | release gate on commit `a8ef56e`, 60 s robustness campaign; a separate 300 s campaign, 8 targets, no findings | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md`, `docs/review/ROBUSTNESS-CAMPAIGN-linux-x64.md` |
 
 **macOS** (arm64, GitHub `macos-latest`) has run the CI matrix only (`.github/workflows/ci.yml`,
 run 36099317045 on 2026-09-25: release build, both test suites including the short robustness
