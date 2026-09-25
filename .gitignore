@@ -9,3 +9,4 @@ benchmarks/corpus_arm64/
 benchmarks/_wheels/
 tsaur/target-nolepton/
 dist/
+.claude/
