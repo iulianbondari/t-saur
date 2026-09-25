@@ -10,7 +10,11 @@ on:
     # below: YAML anchors are not relied on in workflow files)
     paths-ignore:
       - "docs/**"
-      - "**.md"
+      - "*.md"
+      - "benchmarks/**.md"
+      - "prototype/**.md"
+      - "tsaur/README.md"
+      - ".github/**.md"
       - "CITATION.cff"
       - "LICENSE-*"
       - "licenses/**"
@@ -22,7 +26,11 @@ on:
   pull_request:
     paths-ignore:
       - "docs/**"
-      - "**.md"
+      - "*.md"
+      - "benchmarks/**.md"
+      - "prototype/**.md"
+      - "tsaur/README.md"
+      - ".github/**.md"
       - "CITATION.cff"
       - "LICENSE-*"
       - "licenses/**"

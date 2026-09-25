@@ -144,5 +144,5 @@ carry the LGPL texts too (`THIRD-PARTY-NOTICES.md`, `docs/DISTRIBUTION-POLICY.md
 - Real-world DOCX/PDF/JPEG set (13 files): 78.3 % vs 92.1 % / 92.3 %, 13/13 containers inverted.
 - Windows x64 executables (13.5 MB): 32.5 % default, 30.8 % solid vs 7-Zip BCJ2 29.7 %, WinRAR 33.1 %.
 - ARM64 shared libraries (22.5 MB): 17.8 % default, 16.0 % solid vs 7-Zip 16.4 % (15.9 % with filters off), WinRAR 18.5 %.
-- Romanian text with diacritics (437 KB): 26.6 % vs 7-Zip LZMA2 31.0 % / PPMd 28.6 % / WinRAR 32.6 %.
+- Romanian text with diacritics (437 KB, a private corpus that is not published, so this figure cannot be reproduced from the repository): 26.6 % vs 7-Zip LZMA2 31.0 % / PPMd 28.6 % / WinRAR 32.6 %.
 - Incremental archive by reference: 2.8 % of the input (6.8 % without delta coding) instead of 45.2 % for a full archive.

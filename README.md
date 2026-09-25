@@ -46,7 +46,7 @@ otherwise its content, file names and hashes are readable by anyone who holds th
 ```
 .
 ├── README.md, ROADMAP.md, CHANGELOG.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, AUTHORS.md, CITATION.cff
-├── LICENSE-APACHE, LICENSE-MIT, THIRD-PARTY-NOTICES.md, licenses/ (LGPL/GPL texts for the optional Lepton component)
+├── LICENSE-APACHE, LICENSE-MIT, THIRD-PARTY-NOTICES.md, licenses/ (LGPL/GPL texts for the `cabac` component that every build contains)
 ├── docs/
 │   ├── INSTALL.md, GUIDE.md, V1-CONTRACT.md, DISTRIBUTION-POLICY.md, PROVENANCE.md, RELEASE-PROCESS.md
 │   ├── DESIGN-AGENT-FIRST.md          what an AI agent needs from an archiver + how we build it (requirements R1–R24, API, Rust architecture, open checks, milestones)
@@ -64,8 +64,8 @@ otherwise its content, file names and hashes are readable by anyone who holds th
 
 ## Quick start
 
-Release packages (`tsaur-<version>-<platform>-lite.zip`, the recommended one, and `-full.zip` with Lepton JPEG
-recompression) contain the binary, this documentation and the licenses; `docs/GUIDE.md` walks through packing,
+Release packages (`tsaur-<version>-<platform>-lite.zip`; the full build with Lepton JPEG recompression is built
+from source, see `docs/DISTRIBUTION-POLICY.md`) contain the binary, this documentation and the licenses; `docs/GUIDE.md` walks through packing,
 verifying, restoring, volumes and transfers, and every command in it is executed by `tools/check_guide.py` before a
 release. From source:
 
@@ -145,7 +145,8 @@ base64, a citation URI in the structured result), `tsaur_grep`, `tsaur_diff`, `t
 `tsaur://<archive file name>/<entry path>`. Every byte returned is hash-verified first, and every tool description tells
 the model that archive content is untrusted data, never instructions.
 
-Python prototype and benchmark (no extra packages needed on the reference machine):
+Python prototype and benchmark (Python 3.12+ with `zstandard`, `cbor2`, `PyNaCl`, `numpy`, `python-docx` and `PyMuPDF`;
+PyMuPDF is AGPL-licensed and used only by the corpus builder, never by the Rust implementation):
 
 ```bash
 python benchmarks/build_corpus.py
@@ -194,7 +195,6 @@ without trying the slower codecs.
 | Input | 7-Zip LZMA2 -mx9 | 7-Zip PPMd o32 | WinRAR RAR5 -m5 | **T-saur default** |
 |---|---:|---:|---:|---:|
 | plain text only (md + txt, 476 KB) | 25.4 % | 23.5 % | 26.8 % | **22.7 %** (PPMd) |
-| Romanian text with diacritics (10 Markdown research drafts, 437 KB) | 31.0 % | 28.6 % | 32.6 % | **26.6 %** (PPMd) |
 | JPEG photos + a PDF with embedded JPEGs (413 KB) | 50.4 % | — | 50.5 % | **43.2 %** (Lepton) |
 
 JPEG files and DCTDecode streams inside PDFs are recompressed losslessly with Lepton (Microsoft's Rust port,
@@ -262,13 +262,15 @@ data. Vulnerabilities go through GitHub private vulnerability reporting once the
 
 ## License
 
-Code: Apache-2.0 OR MIT (`LICENSE-APACHE`, `LICENSE-MIT`), at your option. Specification: CC-BY-4.0 with an OWFa 1.0
-patent commitment. Test vectors: CC0. See `CONTRIBUTING.md` before opening a pull request.
+Code: Apache-2.0 OR MIT (`LICENSE-APACHE`, `LICENSE-MIT`), at your option. Specification: CC-BY-4.0. Test vectors: CC0. See `CONTRIBUTING.md` before opening a pull request.
 
 Dependencies (checked with `cargo metadata`, 246 packages, `THIRD-PARTY-NOTICES.md`): all permissive (MIT /
-Apache-2.0 / BSD / ISC / Zlib / 0BSD / CC0 / Unicode) with one exception: `cabac` (LGPL-3.0-or-later), pulled in by
-`lepton_jpeg` for lossless JPEG recompression. Lepton is therefore a Cargo feature (`lepton`, on by default): `cargo build --release
---no-default-features` gives a binary without Lepton, which stores JPEGs as they are and cannot open archives that
-contain Lepton segments. Distributed binaries that include the feature carry the LGPL-3.0 obligations for that
-component (source availability and the ability to relink); the format itself only requires a Lepton decoder, for
-which Apache-2.0 implementations exist. No dependency requires an account, a key or a service.
+Apache-2.0 / BSD / ISC / Zlib / 0BSD / CC0 / Unicode) with one exception: `cabac` (LGPL-3.0-or-later), the
+arithmetic coder used by `preflate-rs`, which every build contains (it inverts the deflate streams of ZIP/OPC and
+PDF content). Every distributed binary therefore carries the LGPL-3.0 obligations for that component (prominent
+notice, the license texts, source availability and the ability to relink; `THIRD-PARTY-NOTICES.md` and
+`docs/DISTRIBUTION-POLICY.md` §3.4 say how the project meets them, and removing `cabac` is roadmap item 1.1).
+Lepton JPEG recompression is a separate Cargo feature (`lepton`, on by default): `cargo build --release
+--no-default-features` gives the lite binary, which stores JPEGs as they are and cannot open archives that
+contain Lepton segments; the format itself only requires a Lepton decoder, for which Apache-2.0 implementations
+exist. No dependency requires an account, a key or a service.
