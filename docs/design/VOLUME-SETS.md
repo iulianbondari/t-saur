@@ -198,14 +198,23 @@ the finished volume is byte-identical and the archive joins.
 | local paths | fetched volumes are written only under `--out`, named from the descriptor's archive name when that is a safe single path component and from the set id otherwise; nothing from the wire selects a path | client |
 | listening | loopback by default; any other address requires `--expose-lan` together with who may fetch: `--tls-identity FILE --allow <fingerprint>...` or `--allow-anyone`; the resulting access is printed (`access:`) and anonymous access is warned about | CLI |
 | TLS | the handshake, including the peer's fingerprint check, completes before any request byte; connections above the limits are closed without a reply in TLS mode (`ERR 503` / `ERR 429` in plain mode) | server |
+| bandwidth | unlimited by default; `--max-bandwidth-kib` sets one token bucket of bytes (one second of the rate, starts full) shared by every connection in arrival order, paid in slices of at most an eighth of a second of the rate; the time a connection spends waiting is credited to its budget, so the cap never triggers the `min_rate` cut-off; the effective rate of one client is the cap divided by the active connections | server |
+| distinct addresses | 64 source addresses with an open connection by default (`--max-peers`); a further address gets `ERR 503` (a silent close in TLS mode) until one leaves, and the client retries with the same back-off; an address is a resource key, not an identity | server |
 
-What is **not** limited: total bandwidth, and the number of distinct source addresses (each
-keeps a small token bucket; buckets that are full again are forgotten once more than 4096 are
-tracked). Tests (`tests/transfer_limits.rs`): a connection that sends nothing and one that
-trickles a byte every 200 ms both lose their slot when the budget ends and the slots are usable
-again; a burst of 30 requests from one address at a rate of 5 per second admits about ten and
-answers `ERR 429` to the rest, and a fetch through the same server still completes thanks to
-the client's back-off; in TLS mode the same refusal is a silent close, retried the same way.
+What is **not** limited: how many pieces one allowed client may fetch over time (there is no
+quota), and the rate at which the client reads (only the lower bound `min_rate`). Each address
+keeps a small request-rate bucket; buckets that are full again are forgotten once more than
+4096 are tracked, and an address refused by `--max-peers` never reaches a bucket. Tests
+(`tests/transfer_limits.rs`): a connection that sends nothing and one that trickles a byte
+every 200 ms both lose their slot when the budget ends and the slots are usable again; a burst
+of 30 requests from one address at a rate of 5 per second admits about ten and answers
+`ERR 429` to the rest, and a fetch through the same server still completes thanks to the
+client's back-off; in TLS mode the same refusal is a silent close, retried the same way; a
+fetch through a 256 KiB/s cap is no faster than the cap allows (lower bound only, so a slow
+runner cannot fail it), two concurrent fetches share one cap, a 1 s budget with a 1 MiB/s
+`min_rate` and a 128 KiB/s cap still delivers 256 KiB pieces (the credit), and `--max-peers 1`
+serves one address fully; the address slots themselves are covered by a unit test of the gate
+(`std` cannot bind a second loopback source address portably).
 
 ### 8.3 Encrypted transport with locally pinned identities
 
@@ -225,3 +234,17 @@ certificate is refused with nothing written; clients outside the allow list and 
 against a mutual server are refused; the anonymous-client mode still pins the server; plain vs TLS
 in both directions fails cleanly; an interrupted TLS fetch resumes over TLS with the pieces on
 disk re-verified. Trust rules: `VOLUME-TRUST.md` §6.
+
+Two refinements of the authorization (`VOLUME-TRUST.md` §6.3, §6.4): `--revoke FILE` on either
+side refuses fingerprints even when pinned or allowed, checked at start-up and again by the
+verifiers at the handshake; `--allow-set <set id>=<fp>` and `--allow-file` restrict a client to
+specific sets, answered like unknown sets for the others. Tests (`tests/transfer_policy.rs`,
+CLI `serve_and_fetch_check_revocations_and_per_set_lists_at_startup`): a revoked client that is
+also allowed is closed at the handshake without a reply while the other client still fetches
+and joins; a revoked pinned server is refused by the client before any connection, and by the
+verifier when a caller builds the configuration directly; a client restricted to one set lists,
+fetches and joins that set only, gets `404 unknown set` for the other and writes nothing, an
+unrestricted client fetches both, a stranger is closed at the handshake; per-set lists without
+TLS are refused at bind time; the CLI refuses to start when every allowed identity is revoked,
+reports `revoked 1` otherwise, resolves 16-character set prefixes and refuses shorter or
+unknown ones.

@@ -194,9 +194,92 @@ fn rate_limited_tls_connections_are_closed_without_a_reply() {
     assert_eq!(list().unwrap().len(), 1);
     // and a pinned fetch (descriptor, have list, eight pieces) still completes with the back-off
     let out = l.dir.join("here");
-    let rep = transfer::fetch(&opts(&l, &addr, &out, Some(ClientTls { identity: Some(client_id.clone()), peer_ids: vec![server_id.fingerprint] }))).unwrap();
+    let rep = transfer::fetch(&opts(&l, &addr, &out, Some(ClientTls { identity: Some(client_id.clone()), peer_ids: vec![server_id.fingerprint], ..Default::default() }))).unwrap();
     assert!(rep.reconstructible && rep.encrypted, "{rep:?}");
     assert!(rep.seconds_handshake > 0.0 && rep.requests >= 10, "{rep:?}");
+    stop.store(true, Ordering::Relaxed);
+    let _ = std::fs::remove_dir_all(&l.dir);
+}
+
+/// A lab whose volumes have one 256 KiB piece each (2 + 1 over about 500 KB).
+fn lab_big_pieces(tag: &str) -> Lab {
+    let mut l = lab(tag);
+    let vol_dir = l.dir.join("big-volumes");
+    std::fs::create_dir_all(&vol_dir).unwrap();
+    let rep = volumes::split(&l.dir.join("set.tsr"), &SplitOptions { data: 2, parity: 1, piece_size: Some(262144), outputs: vec![vol_dir] }).unwrap();
+    l.volumes = rep.volumes.iter().map(|v| v.path.clone()).collect();
+    l.set_id.copy_from_slice(&hex::decode(&rep.set_id).unwrap());
+    l.descriptor_b3.copy_from_slice(&hex::decode(&rep.descriptor_b3).unwrap());
+    l
+}
+
+#[test]
+fn bandwidth_cap_bounds_the_transfer_rate() {
+    let l = lab("bandwidth");
+    let cap: u64 = 256 << 10;
+    let (addr, stop) = serve(&l.volumes, ServerLimits { max_bandwidth: Some(cap), ..ServerLimits::default() }, None);
+    let out = l.dir.join("here");
+    let rep = transfer::fetch(&opts(&l, &addr, &out, None)).unwrap();
+    assert!(rep.reconstructible, "{rep:?}");
+    // one second of the rate is granted at once (the bucket starts full); everything beyond it
+    // is metered, so the fetch cannot have been faster than the cap allows (lower bound only:
+    // a slow runner may take longer, never less)
+    let metered = rep.bytes_received.saturating_sub(cap) as f64 / cap as f64;
+    assert!(rep.seconds_total >= metered * 0.9, "received {} bytes in {:.2} s at a cap of {cap} B/s", rep.bytes_received, rep.seconds_total);
+    assert!(rep.bytes_received > cap, "the lab must be larger than one second of the cap: {}", rep.bytes_received);
+    volumes::join(std::slice::from_ref(&out), &l.dir.join("joined.tsr")).unwrap();
+    assert_eq!(std::fs::read(l.dir.join("joined.tsr")).unwrap(), l.archive_bytes);
+    stop.store(true, Ordering::Relaxed);
+    let _ = std::fs::remove_dir_all(&l.dir);
+}
+
+#[test]
+fn throttled_clients_are_not_cut_off_by_the_time_budget() {
+    // budget per response: max(timeout 1 s, 256 KiB / 1 MiB/s) = 1 s; at 128 KiB/s a piece takes
+    // about 2 s, so without the throttling credit the connection would be cut after ~128 KiB
+    let l = lab_big_pieces("credit");
+    let limits = ServerLimits { timeout: Duration::from_secs(1), min_rate: 1 << 20, max_bandwidth: Some(128 << 10), ..ServerLimits::default() };
+    let (addr, stop) = serve(&l.volumes, limits, None);
+    let out = l.dir.join("here");
+    let rep = transfer::fetch(&opts(&l, &addr, &out, None)).unwrap();
+    assert!(rep.reconstructible && rep.pieces_rejected == 0, "{rep:?}");
+    assert!(rep.seconds_total >= 2.0, "two 256 KiB pieces at 128 KiB/s take at least about three seconds minus the free burst: {:.2} s", rep.seconds_total);
+    volumes::join(std::slice::from_ref(&out), &l.dir.join("joined.tsr")).unwrap();
+    assert_eq!(std::fs::read(l.dir.join("joined.tsr")).unwrap(), l.archive_bytes);
+    stop.store(true, Ordering::Relaxed);
+    let _ = std::fs::remove_dir_all(&l.dir);
+}
+
+#[test]
+fn bandwidth_cap_is_shared_between_connections() {
+    let l = lab("shared");
+    let cap: u64 = 256 << 10;
+    let (addr, stop) = serve(&l.volumes, ServerLimits { max_bandwidth: Some(cap), ..ServerLimits::default() }, None);
+    let t0 = Instant::now();
+    let fetches: Vec<_> = (0..2)
+        .map(|i| {
+            let o = opts(&l, &addr, &l.dir.join(format!("here-{i}")), None);
+            std::thread::spawn(move || transfer::fetch(&o).unwrap())
+        })
+        .collect();
+    let reports: Vec<_> = fetches.into_iter().map(|h| h.join().unwrap()).collect();
+    let elapsed = t0.elapsed().as_secs_f64();
+    let bytes: u64 = reports.iter().map(|r| r.bytes_received).sum();
+    assert!(reports.iter().all(|r| r.reconstructible), "{reports:?}");
+    // the two fetches together never exceed the cap plus the free burst (loose upper bound)
+    assert!(bytes as f64 <= cap as f64 * elapsed * 1.5 + cap as f64 * 2.0, "{bytes} bytes in {elapsed:.2} s at a shared cap of {cap} B/s");
+    stop.store(true, Ordering::Relaxed);
+    let _ = std::fs::remove_dir_all(&l.dir);
+}
+
+#[test]
+fn max_peers_one_still_serves_one_address_fully() {
+    let l = lab("peers");
+    let (addr, stop) = serve(&l.volumes, ServerLimits { max_peers: 1, ..ServerLimits::default() }, None);
+    let out = l.dir.join("here");
+    let rep = transfer::fetch(&opts(&l, &addr, &out, None)).unwrap();
+    assert!(rep.reconstructible && rep.pieces_rejected == 0, "{rep:?}");
+    assert!(raw(&addr, "TSXP/1 SETS\n").unwrap().starts_with("OK "));
     stop.store(true, Ordering::Relaxed);
     let _ = std::fs::remove_dir_all(&l.dir);
 }

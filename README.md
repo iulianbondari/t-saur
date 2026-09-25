@@ -124,8 +124,11 @@ than trusted from the progress map. `serve` listens on loopback by default; expo
 statement of who may fetch: `--tls-identity` with `--allow <fingerprint>` (TLS 1.3 with self-signed certificates that
 each side pins by fingerprint: no certificate authority, account or service; the fingerprint travels through the same
 trusted channel as the set id, and a mismatch ends the handshake before any request) or the explicit `--allow-anyone`.
-Every connection runs under a time budget and every source address under a request rate. Trust contract and limits:
-`docs/design/VOLUME-TRUST.md`, `docs/design/VOLUME-SETS.md` §8.
+Every connection runs under a time budget and every source address under a request rate; `--max-bandwidth-kib` caps
+what the server sends in total and `--max-peers` the distinct addresses it serves at once. `--revoke FILE` on either
+side refuses a fingerprint even when it is pinned or allowed, and `--allow-set <set id>=<fingerprint>` admits a client
+to one set only (the others are answered like unknown sets). Trust contract and limits: `docs/design/VOLUME-TRUST.md`,
+`docs/design/VOLUME-SETS.md` §8.
 
 ### For agents: the MCP server
 

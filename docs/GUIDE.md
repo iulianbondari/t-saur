@@ -155,6 +155,11 @@ On the machine that has the volumes (*not run automatically*: it serves until in
 tsaur volumes serve drive1 drive3 drive4 --listen 192.168.1.10:7407 --expose-lan --tls-identity peer.key --allow <fingerprint of the receiver>
 ```
 
+Optional on the serving side: `--revoke FILE` (fingerprints refused even when allowed, one per
+line), `--allow-set <set id>=<fingerprint>` (a client that may read one set only),
+`--max-bandwidth-kib N` (bytes sent per second in total) and `--max-peers N` (distinct addresses
+served at once). The receiver may pass `--revoke FILE` too, against a server whose key was lost.
+
 On the receiver (*not run automatically*: it needs the values from the other machine):
 
 ```bash

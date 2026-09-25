@@ -61,7 +61,11 @@ fetch: `--tls-identity FILE --allow <fingerprint>` (encrypted, server authentica
 clients only) or the explicit `--allow-anyone`. The resulting access is printed at start-up and
 anonymous access is warned about. Every connection runs under a time budget (request within
 30 s, responses consumed at 64 KiB/s or faster), every source address under a request rate
-(200 per second, burst 400) and connection counts (64 total, 8 per address); all configurable.
+(200 per second, burst 400) and connection counts (64 total, 8 per address, 64 distinct
+addresses), and, when set, every byte sent under one bandwidth cap shared by all connections;
+all configurable. Client authorization can be per set (`--allow-set`, `--allow-file`: a set
+outside a client's lists is answered like an unknown one), and a revocation file (`--revoke`) on
+either side refuses a fingerprint even when it is pinned or allowed, at the handshake.
 `fetch` verifies the descriptor against the set id or descriptor hash the user supplied and every
 piece against the descriptor before writing it, re-verifies resumed pieces from disk, never lets
 network data choose a local path, and refuses oversized replies before allocating them
@@ -90,3 +94,6 @@ Trust contract: `docs/design/VOLUME-TRUST.md`.
 * On any network you do not control, serve and fetch volumes with `--tls-identity` and pinned
   fingerprints, keep `peer.key` files as private as SSH keys, and split archives that were
   encrypted at pack time rather than relying on the transport alone.
+* Keep a revocation file next to your allow list and pass it to every `serve` and `fetch`
+  (`--revoke FILE`), so a lost key is shut out everywhere without editing every command; give
+  clients that need one set only `--allow-set` rather than `--allow`.
