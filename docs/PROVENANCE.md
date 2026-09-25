@@ -57,9 +57,22 @@ git filter-repo --path docs/research --path benchmarks/check_names.sh --invert-p
 The mailmap mapped the private address used by the maintainer's tooling, and the assistant's
 default git identity on six merge commits, to `Iulian Bondari
 <76534436+iulianbondari@users.noreply.github.com>`; AI assistance stays stated in `AUTHORS.md` and
-in the trailers. Pull requests #1 to #15 keep their pages on GitHub; the commits they list belong
-to the old history and are no longer reachable from `main`. The maintainer's private mirror keeps
-the old history. Nothing else about the content changed: the tree hash proves it.
+in the trailers. Nothing else about the content changed: the tree hash proves it.
+
+## Published as a new repository (2026-09-25)
+
+After the rewrite, `main` of the development repository was clean, but GitHub keeps a
+read-only ref for every pull request (`refs/pull/<n>/head`), and those refs still reached the
+pre-rewrite commits: the removed notes stayed visible through the pull-request pages and their
+diffs, and a forced update of `main` cannot change that. So the public repository is a **new
+repository under the same name**: the development repository was renamed `t-saur-dev` and
+stays private (pull requests #1 to #19, the old history, the CI runs and their logs live there),
+an empty private `t-saur` was created, `main` alone was pushed into it, the push was verified
+from a fresh clone (same root commit `29bc672`, same tree hash as `main` of `t-saur-dev`, no
+commit touching the removed paths, no address other than the published ones in the history),
+and only then was `t-saur` made public. The CI checks recorded in `docs/V1-CONTRACT.md` §5 and
+in the review reports ran in `t-saur-dev` on the same commits; the determinism hash of the
+three systems is quoted there because the run logs are not public.
 
 ## Why the history is not published
 

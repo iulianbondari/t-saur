@@ -42,6 +42,38 @@ the author and committer identities. Then:
 5. Refresh the local mirror (`git fetch origin && git reset --hard origin/main` in a clean
    clone; the private development mirror keeps its own history).
 
+Steps 1 to 5 were executed on 2026-09-25 (the CI run on the rewritten `main` was green on the
+three systems).
+
+### A1b. A new repository for the public history
+
+A forced update of `main` does not remove the pull-request refs (`refs/pull/<n>/head`) that
+GitHub keeps, and through them the pre-rewrite commits and the removed notes stayed reachable
+in the development repository. The public repository is therefore a new one, under the same
+name, and the development repository keeps everything else:
+
+1. Wait until no session or workflow is writing to the development repository.
+2. Settings → General → *Rename* the development repository to `t-saur-dev`; it stays private
+   (pull requests #1 to #19, the CI runs and the old history stay there).
+3. Create `t-saur` empty and private: no README, no license, no `.gitignore` (the tree brings
+   its own).
+4. From a fresh clone of `t-saur-dev` at the tip of `main`:
+
+   ```bash
+   git clone --branch main --single-branch https://github.com/iulianbondari/t-saur-dev pub && cd pub
+   git rev-parse main main^{tree}; git rev-list --count main; git rev-list --max-parents=0 main
+   test "$(git log --all --oneline -- docs/research benchmarks/check_names.sh | wc -l)" -eq 0
+   git log --all --format='%an <%ae>%n%cn <%ce>' | sort -u          # only the published identities
+   git remote set-url origin https://github.com/iulianbondari/t-saur
+   git push -u origin main                                           # main only, no tags, no other branch
+   ```
+
+5. Verify from a fresh clone of `t-saur`: same tip, tree, count and root as printed in step 4;
+   `git ls-remote` shows `refs/heads/main` and nothing else.
+6. Record the result in `docs/PROVENANCE.md` ("Published as a new repository") through a pull
+   request in the new repository, then continue with A2 there. A new repository starts with
+   GitHub's defaults, so every setting of A2 is set again, not merely confirmed.
+
 ### A2. Visibility, rules, preview
 
 1. GitHub → Settings → General → Danger zone → *Change repository visibility* → Public.
@@ -50,23 +82,27 @@ the author and committer identities. Then:
    Check afterwards that a test pull request shows the three required checks.
 3. Settings → General → *Social preview* → upload `docs/brand/tsaur-social-preview.png`
    (1280 × 640). The option appears only on a public repository.
-4. Confirm the settings chosen on 2026-09-25 survived the visibility change: release
+4. Set the settings chosen on 2026-09-25 for the development repository: release
    immutability on, rebase merging off, "always suggest updating pull request branches" on,
    automatic deletion of head branches on, Dependabot alerts, dependency graph and malware
-   alerts on, security and version updates off (updates go through pull requests and the gate).
+   alerts on, security and version updates off (updates go through pull requests and the gate),
+   workflow permissions read-only (the workflows declare what they need).
 5. Settings → Advanced Security → *Private vulnerability reporting* → Enable: `SECURITY.md` and the
    issue template send reporters there, and it is off by default on a newly public repository.
 6. Repository page → *About* → topics (`archive-format`, `archiver`, `compression`, `rust`,
    `content-addressed`, `deduplication`, `erasure-coding`, `ai-agents`, `mcp`,
    `post-quantum-cryptography`, `blake3`, `zstd`) and, if wanted, a homepage.
 7. Wikis stay off (documentation lives in `docs/`); Discussions are the maintainer's call.
+8. Start the workflow once by hand (`workflow_dispatch` on `main`) so that the public repository
+   has its own green run on the three systems.
 
 ### A3. Independent review
 
-Open an issue "Independent review of 1.0.0-rc" that links `docs/review/REVIEW-PACKAGE.md` and
-the verification reports, states the scope (the same as the package's §2) and what the reviewer
-gets (credit in `CHANGELOG.md` and the report published under `docs/review/`). The review is the
-evaluator's own work; the producer's checks are not a substitute.
+Open an issue "Independent review of 1.0.0-rc" in the public repository that links
+`docs/review/REVIEW-PACKAGE.md` and the verification reports, states the scope (the same as the
+package's §2) and what the reviewer gets (credit in `CHANGELOG.md` and the report published under
+`docs/review/`). The review is the evaluator's own work; the producer's checks are not a
+substitute.
 
 ### A4. Two-device measurements
 
