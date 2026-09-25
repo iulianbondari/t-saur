@@ -261,7 +261,8 @@ impl Server {
         out
     }
 
-    /// Accept connections until `stop` is set (checked every 50 ms); each admitted request runs
+    /// Accept connections until `stop` is set (checked every 2 ms, so that a sequential client waits
+    /// at most that long between one piece and the next); each admitted request runs
     /// on its own thread. Excess connections are answered `ERR 503 busy`, connections above the
     /// per-address rate `ERR 429`, and closed; in TLS mode both are closed without a reply, so
     /// no handshake is spent on them. Every admitted connection runs under a time budget
@@ -316,7 +317,7 @@ impl Server {
                         gate.leave(peer.ip());
                     });
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(50)),
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(2)),
                 Err(e) => return Err(Error::Io(e)),
             }
         }
