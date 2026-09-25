@@ -40,18 +40,8 @@ otherwise its content, file names and hashes are readable by anyone who holds th
 │   ├── INSTALL.md, GUIDE.md, V1-CONTRACT.md, DISTRIBUTION-POLICY.md, PROVENANCE.md
 │   ├── DESIGN-AGENT-FIRST.md          what an AI agent needs from an archiver + how we build it (requirements R1–R24, API, Rust architecture, open checks, milestones)
 │   ├── spec/TSAUR-FORMAT-SPEC-v1.0.md   format specification (v1.0, frozen; implementation notes per section)
-│   ├── design/, review/               volume sets, trust contract, two-device plan; review package and the RC1 verification report
-│   ├── brand/                         logo concept (intellectual T-rex), SVG + PNG
-│   └── research/                      the research corpus (~46k words, ~850 primary sources)
-│       ├── 00-SYNTHESIS.md            synthesis + decisions + implementation status
-│       ├── 01-classic-archivers.md    ZIP, RAR, 7z, zstd, brotli, xz, ZPAQ, PAQ/cmix, precomp/preflate …
-│       ├── 02-ai-compression-and-ai-formats.md   LLM-as-compressor, ZipNN, Xet, safetensors/GGUF/DDUF, OCI …
-│       ├── 03-p2p-content-addressing-dlt.md      BitTorrent v2, IPFS/CAR, iroh, CDC, BLAKE3/Bao, RS/RaptorQ, DLT
-│       ├── 04-encryption-and-security.md         weaknesses of existing formats, AEAD/Argon2id/ML-KEM, C2PA, threat model
-│       ├── 05-naming-trademark-and-ecosystem.md  name checks, competitors, licensing
-│       ├── 05b-naming-round2-tsaur.md            the T-saur decision and its availability checks
-│       ├── 06-theory-and-reference-based-compression.md   entropy/Kolmogorov, LTCB, dictionaries, delta, CRAM, honest estimates
-│       └── 07-agent-formats-protocols-and-security.md     MCP/A2A/Skills, llms.txt, tokens, C2PA/SBOM, prompt injection
+│   ├── design/, review/               volume sets, trust contract, two-device plan; review package and the verification reports
+│   └── brand/                         logo (intellectual T-rex), SVG + PNG, social preview
 ├── tsaur/                             Rust reference implementation (workspace)
 │   ├── crates/tsaur-core              format, chunking, codecs + filters, containers, crypto, manifest, pieces/parity, volumes, transfer, TLS, canonical views (library)
 │   │   └── tests/golden/              the frozen golden archives and their inputs
