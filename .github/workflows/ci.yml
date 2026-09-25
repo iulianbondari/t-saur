@@ -62,7 +62,8 @@ jobs:
           "$py" - <<'EOF'
           import hashlib, pathlib, platform
           h = hashlib.sha256(pathlib.Path('det.tsr').read_bytes()).hexdigest()
-          pathlib.Path('det-' + platform.system().lower() + '.sha256').write_text(h)
+          # one line per platform, newline-terminated: the compare job concatenates these files
+          pathlib.Path('det-' + platform.system().lower() + '.sha256').write_text(f"{h}  {platform.system().lower()}\n")
           print(platform.system(), h)
           EOF
       - uses: actions/upload-artifact@v4
@@ -80,5 +81,19 @@ jobs:
           merge-multiple: true
       - name: Compare archive hashes across platforms
         run: |
-          cat det-*.sha256; echo
-          test "$(cat det-*.sha256 | sort -u | wc -l)" -eq 1 && echo "identical on every platform"
+          # Each file holds "<sha256>  <platform>\n". Three files are required (one per matrix
+          # entry) and exactly one distinct hash; the earlier form (`cat | sort -u | wc -l` over
+          # files without a trailing newline) joined the hashes into one line and never compared.
+          python3 - <<'EOF'
+          import pathlib, sys
+          files = sorted(pathlib.Path('.').glob('det-*.sha256'))
+          rows = [f.read_text().split() for f in files]
+          for f, r in zip(files, rows):
+              print(f.name, *r)
+          hashes = {r[0] for r in rows}
+          if len(files) != 3 or any(len(r) != 2 or len(r[0]) != 64 for r in rows):
+              sys.exit(f"expected three well-formed hash files, got {len(files)}: {rows}")
+          if len(hashes) != 1:
+              sys.exit(f"the archive differs between platforms: {sorted(hashes)}")
+          print("identical on every platform")
+          EOF
