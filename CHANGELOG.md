@@ -13,7 +13,10 @@ the lite packages, neutral copyright lines in the license files, relative paths 
 on 2026-09-25 the research notes and the name-availability script, the maintainer's working
 material, were removed from the public tree (`docs/PROVENANCE.md`); the same day the maintainer
 settled the copyright holder (Iulian Bondari, license files updated) and published a contact
-address (`AUTHORS.md`).
+address (`AUTHORS.md`). A dependency audit the same day found that the LGPL-3.0 crate `cabac` is a
+dependency of `preflate-rs`, not only of Lepton, so it is part of **every** build; the statements
+that the lite build contains no LGPL code were corrected everywhere, and the lite packages now
+carry the LGPL texts too (`THIRD-PARTY-NOTICES.md`, `docs/DISTRIBUTION-POLICY.md`).
 
 - **Format v1 frozen** (`docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` §12, `docs/V1-CONTRACT.md`): v1 readers
   accept exactly version 1 of `.tsr` and `.tsrv` and refuse any other version by name; the writer
@@ -132,6 +135,8 @@ address (`AUTHORS.md`).
 - All 224 dependency packages are permissive (MIT / Apache-2.0 / BSD / Zlib / 0BSD / CC0 / Unicode) except
   `cabac 0.15.0` (LGPL-3.0-or-later, pulled in by `lepton_jpeg`). Lepton support is now a Cargo feature
   (`lepton`, on by default) so that builds without LGPL code are possible; see README "Licenses".
+  *Corrected 2026-09-25:* `cabac` also reaches every build through `preflate-rs`, so no build is
+  free of it; see the 1.0.0-rc.1 entry above.
 
 ### Measured (see `benchmarks/RESULTS-rust.md`)
 - Corpus A (10 unrelated documents): 62.2 % vs 7-Zip 73.6 % / WinRAR 74.2 %.

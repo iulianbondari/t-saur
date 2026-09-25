@@ -29,7 +29,8 @@ DIST = ROOT / "dist"
 COMMON_FILES = ["README.md", "LICENSE-APACHE", "LICENSE-MIT", "THIRD-PARTY-NOTICES.md", "CHANGELOG.md", "SECURITY.md",
                 "docs/GUIDE.md", "docs/V1-CONTRACT.md", "docs/DISTRIBUTION-POLICY.md", "docs/spec/TSAUR-FORMAT-SPEC-v1.0.md",
                 "docs/design/VOLUME-SETS.md", "docs/design/VOLUME-TRUST.md"]
-FULL_ONLY = ["licenses/LGPL-3.0.txt", "licenses/GPL-3.0.txt"]
+# the LGPL texts go into every package: `cabac` (LGPL-3.0-or-later) is part of every build through `preflate-rs`
+LGPL_TEXTS = ["licenses/LGPL-3.0.txt", "licenses/GPL-3.0.txt"]
 
 
 def version(exe: Path) -> str:
@@ -51,11 +52,11 @@ def sha256(path: Path) -> str:
 
 
 def package_readme(variant: str, ver: str, tag: str) -> str:
-    lepton = ("This is the **full** build: it recompresses JPEG files and PDF images losslessly with Lepton, whose "
-              "dependency `cabac` is LGPL-3.0-or-later (see THIRD-PARTY-NOTICES.md and licenses/). Archives that contain "
+    lepton = ("This is the **full** build: it recompresses JPEG files and PDF images losslessly with Lepton. Like every "
+              "build it contains `cabac` (LGPL-3.0-or-later) through `preflate-rs` (see THIRD-PARTY-NOTICES.md and licenses/). Archives that contain "
               "recompressed JPEGs need this build to open; `tsaur pack --no-lepton` writes archives every build can read."
               if variant == "full" else
-              "This is the **lite** build: no LGPL code, JPEGs are stored as they are, and every archive it writes can be "
+              "This is the **lite** build: no Lepton, JPEGs are stored as they are, and every archive it writes can be "
               "opened by any T-saur build. It cannot open archives whose JPEG entries were recompressed by the full build "
               "(they report `requires: lepton`).")
     return f"""# T-saur {ver} — {variant} build for {tag}
@@ -72,7 +73,7 @@ def package_readme(variant: str, ver: str, tag: str) -> str:
 
 `{EXE}`, README.md, docs/GUIDE.md, docs/V1-CONTRACT.md (what v1.0 promises), docs/DISTRIBUTION-POLICY.md,
 the format specification, the volume-set and trust design notes, CHANGELOG.md, SECURITY.md, the licenses
-(Apache-2.0 OR MIT for T-saur; THIRD-PARTY-NOTICES.md for the dependencies{', licenses/ for the LGPL texts' if variant == 'full' else ''}).
+(Apache-2.0 OR MIT for T-saur; THIRD-PARTY-NOTICES.md for the dependencies, licenses/ for the LGPL texts of `cabac`, which every build contains through `preflate-rs`).
 
 ## Quick check
 
@@ -92,7 +93,7 @@ def build_package(variant: str, exe: Path, ver: str, tag: str, stage: Path) -> P
     shutil.rmtree(pkg, ignore_errors=True)
     pkg.mkdir(parents=True)
     shutil.copy2(exe, pkg / EXE)
-    for rel in COMMON_FILES + (FULL_ONLY if variant == "full" else []):
+    for rel in COMMON_FILES + LGPL_TEXTS:
         src = ROOT / rel
         dst = pkg / rel
         dst.parent.mkdir(parents=True, exist_ok=True)

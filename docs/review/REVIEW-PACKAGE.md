@@ -15,7 +15,7 @@ so the reviewer knows what was and was not looked at, not as a substitute for th
   control) and in the delivery message; the golden archives, the reference inputs and the
   verification report are inside the tree. Verify the hash before reading.
 * Build: Rust 1.87 or newer, `cd tsaur && cargo build --release`; the lite build is
-  `cargo build --release --no-default-features` (no Lepton, no LGPL code). `docs/V1-CONTRACT.md`
+  `cargo build --release --no-default-features` (no Lepton; both builds contain the LGPL component `cabac`, see `THIRD-PARTY-NOTICES.md`). `docs/V1-CONTRACT.md`
   states what the candidate promises; `tools/release_gate.py` reruns every producer check.
 
 ## 2. Scope of this round
