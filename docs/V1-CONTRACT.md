@@ -70,15 +70,23 @@ archives, the guide, the packages) and recorded the result:
 | Platform | What ran | Record |
 |---|---|---|
 | **Windows 11 x64** (MSVC toolchain, rustc 1.93.1) | release gate, 60 s robustness campaign | `docs/review/RC1-VERIFICATION-REPORT.md` |
-| **Linux x64** (glibc 2.39, rustc 1.94.1, cloud container with 4 logical CPUs) | release gate on commit `a8ef56e`, 60 s robustness campaign | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md` |
+| **Linux x64** (glibc 2.39, rustc 1.94.1, cloud container with 4 logical CPUs) | release gate on commit `a8ef56e`, 60 s robustness campaign; a separate 300 s campaign, 8 targets, no findings | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md`, `docs/review/ROBUSTNESS-CAMPAIGN-linux-x64.md` |
 
 **macOS** (arm64, GitHub `macos-latest`) has run the CI matrix only (`.github/workflows/ci.yml`,
 run 36099317045 on 2026-09-25: release build, both test suites including the short robustness
 run, clippy, rustfmt, the golden archives read by both binaries, the guide with both binaries,
-and the determinism fixture, whose archive hash was identical on Linux, macOS and Windows). That
-covers the suite but not the release gate, so macOS is **covered by CI, not declared verified**
-until someone runs the gate there and records the result. Windows and Linux ran the same CI
-matrix in that run as well.
+and the determinism fixture). That covers the suite but not the release gate, so macOS is
+**covered by CI, not declared verified** until someone runs the gate there and records the
+result. Windows and Linux ran the same CI matrix in that run as well.
+
+**Determinism across platforms (P2).** The fixture archive written by the CI job has the same
+SHA-256 on the Linux, macOS and Windows runners and on the Linux verification machine (both
+builds): `ed4d91a83f83bb75a5071f825c1897a1e7ef53050416eff26af1a3e733bfe1b1`, read from the job
+logs of run 36105324690 (commit `ddeba74`) and compared by hand on 2026-09-25. The comparison
+step of the CI job itself could not fail before pull request #8 (the hash files had no trailing
+newline and were joined into one line), so its earlier "identical" verdicts are not evidence;
+the golden tests (`tests/golden.rs`, archives written on Windows and reproduced byte for byte on
+every platform of the matrix) checked P2 throughout.
 
 ## 6. What "verified" means here
 
