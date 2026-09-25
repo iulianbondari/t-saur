@@ -60,8 +60,26 @@ tsaur unpack demo.tsr restored/ --overwrite
 
 Options worth knowing: `--no-lepton` (full build only: store JPEGs as they are, so the lite build
 can open the archive), `--solid 8` (larger blocks, best ratio), `--codec zstd --level 9` (fast),
-`--canonical` (also store Markdown/text views of DOCX and PDF files for agents), `--ref old.tsr`
-(store only what `old.tsr` does not already hold), `--pieces` (transport pieces + parity sidecars).
+`--effort 3` (faster `--codec best`, see below), `--canonical` (also store Markdown/text views of
+DOCX and PDF files for agents), `--ref old.tsr` (store only what `old.tsr` does not already hold),
+`--pieces` (transport pieces + parity sidecars).
+
+`--effort 1..5` trades codec-choice time for ratio. By default (`--effort 5`) `--codec best` runs
+zstd, xz and, on text, PPMd on every block and keeps the smallest, which costs two to three times
+the time of `--codec zstd`. At `--effort 3` the codec (and the x86/ARM64 branch filter) is chosen
+on a sample of each block — eight evenly spaced 8 KiB slices, never just the beginning — and only
+the winner runs on the whole block: on the benchmark corpora this costs 0.8–1.3× the CPU time of
+`--codec zstd` (the full trial: 2–2.2×) at the ratio of the full trial within 0.4 point. `--effort 2` never picks PPMd (faster
+extraction: PPMd decodes as slowly as it encodes), `--effort 4` adds an xz check whenever PPMd wins
+the sample, `--effort 1` is zstd only. Blocks up to 128 KiB always get the full trial, so small
+archives are unaffected; the output is deterministic for a given effort, and nothing about the
+effort is recorded in the archive (every build reads the result). The default stays 5 in this
+release so that existing inputs keep producing identical bytes.
+
+```bash
+tsaur pack fast.tsr sample --effort 3           # codec chosen on a sample of each block; same format, same readers
+tsaur verify fast.tsr
+```
 
 ## 3. Encryption and signatures (what is protected, and what is not)
 

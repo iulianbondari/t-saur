@@ -35,6 +35,11 @@ pub struct PackOptions {
     pub level: i32,
     /// Codec(s) the packer may use per block.
     pub codec: CodecChoice,
+    /// Codec-choice effort for `CodecChoice::Best`, 1..=5 (`codec::CodecOptions::effort`): 1 = zstd
+    /// only, 2 = zstd or xz decided on a sample of each block, 3 = zstd, xz or PPMd decided on a
+    /// sample, 4 = 3 plus an xz check when PPMd wins, 5 = every codec on every block (default).
+    /// Blocks of at most 128 KiB always run the full trial. Not recorded in the archive.
+    pub effort: u8,
     /// Train a zstd dictionary on the first `dict_warmup` bytes of unique chunks (granular mode only).
     pub train_dict: bool,
     pub dict_size: usize,
@@ -73,6 +78,7 @@ impl Default for PackOptions {
             block_size: 1 << 20,
             level: 19,
             codec: CodecChoice::Best,
+            effort: codec::EFFORT_DEFAULT,
             train_dict: true,
             dict_size: 110 * 1024,
             dict_warmup: 8 << 20,
@@ -105,6 +111,9 @@ pub struct PackReport {
     pub blobs: usize,
     pub dict_bytes: usize,
     pub codec_hist: BTreeMap<String, u32>,
+    /// Blocks whose filter and codec were decided on a sample (`--effort 2..4`, blocks above
+    /// 128 KiB); 0 at the default effort.
+    pub blocks_sampled: usize,
     pub entries: usize,
     pub containers_exploded: usize,
     pub containers_fallback: usize,
@@ -249,6 +258,7 @@ struct Packer {
     blobs_off: u64,
     blobs_written: u64,
     codec_hist: BTreeMap<String, u32>,
+    blocks_sampled: usize,
     // dictionary warm-up (granular mode)
     dict: Option<Vec<u8>>,
     dict_done: bool,
@@ -268,6 +278,9 @@ struct Packer {
 impl Packer {
     fn new(opts: PackOptions, out_path: &Path) -> Result<Self> {
         opts.chunk.validate()?;
+        if !(1..=5).contains(&opts.effort) {
+            return Err(Error::Invalid(format!("effort {} is outside 1..=5", opts.effort)));
+        }
         let key = if opts.password.is_some() || !opts.recipients.is_empty() { Some(ArchiveKey::random()?) } else { None };
         let mut flags = 0u16;
         if key.is_some() {
@@ -342,6 +355,7 @@ impl Packer {
             blobs_off: 0,
             blobs_written: 0,
             codec_hist: BTreeMap::new(),
+            blocks_sampled: 0,
             dict: None,
             dict_done: false,
             warmup: Vec::new(),
@@ -704,7 +718,7 @@ impl Packer {
             return Ok(());
         }
         let mut blocks = std::mem::take(&mut self.ready);
-        let copts = CodecOptions { level: self.opts.level, long_window_log: 27, dict: self.dict.clone(), choice: self.opts.codec };
+        let copts = CodecOptions { level: self.opts.level, long_window_log: 27, dict: self.dict.clone(), choice: self.opts.codec, effort: self.opts.effort };
         // delta dictionaries are gathered up front (reference archives and the recent window)
         let mut dicts: Vec<Option<Vec<u8>>> = Vec::with_capacity(blocks.len());
         for b in blocks.iter_mut() {
@@ -735,6 +749,9 @@ impl Packer {
         for (b, e) in blocks.into_iter().zip(compressed) {
             let c = e.codec;
             *self.codec_hist.entry(codec::name(c).to_string()).or_insert(0) += 1;
+            if codec::samples_block(b.plain.len(), &copts) {
+                self.blocks_sampled += 1;
+            }
             let blob_index = self.blob_records.len() as u64;
             let aad = blob_aad(c, b.plain.len() as u32, b.chunks[0], b.chunks.len() as u32);
             let stored = match &self.key {
@@ -1013,6 +1030,7 @@ impl Packer {
             blobs,
             dict_bytes,
             codec_hist: self.codec_hist.clone(),
+            blocks_sampled: self.blocks_sampled,
             entries: n_entries,
             containers_exploded: self.exploded,
             containers_fallback: self.fallback,

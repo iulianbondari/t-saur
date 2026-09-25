@@ -90,6 +90,12 @@ enum Cmd {
         /// branch filters tried on machine code), zstd (fast), xz (LZMA2) or ppmd
         #[arg(long, default_value = "best")]
         codec: String,
+        /// Codec-choice effort for --codec best: 1 = zstd only, 2 = zstd/xz chosen on a sample of
+        /// each block, 3 = zstd/xz/PPMd chosen on a sample (recommended), 4 = 3 plus an xz check when
+        /// PPMd wins, 5 = every codec on every block (default). Blocks up to 128 KiB always get the
+        /// full trial; other codecs ignore it. Output stays deterministic for a given effort.
+        #[arg(long, default_value_t = 5, value_parser = clap::value_parser!(u8).range(1..=5))]
+        effort: u8,
         /// Blocks compressed in parallel (default: CPU threads); lower it to cap memory at high levels
         #[arg(long, default_value_t = 0)]
         jobs: usize,
@@ -748,6 +754,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             chunk,
             level,
             codec,
+            effort,
             jobs,
             no_dict,
             no_container,
@@ -777,6 +784,7 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                 block_size,
                 level,
                 codec: codec_choice,
+                effort,
                 batch: jobs,
                 references: pw.refs.clone(),
                 recipients: to.iter().map(|p| load_recipient(p)).collect::<anyhow::Result<Vec<_>>>()?,
@@ -819,6 +827,9 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
                     report.chunks_total, report.chunks_unique, report.blobs, report.dict_bytes, report.codec_hist,
                     report.containers_exploded, report.containers_fallback, report.views, report.encrypted, report.signed, report.root
                 );
+                if report.blocks_sampled > 0 {
+                    println!("effort {effort}: codec decided on a sample for {} of {} blobs", report.blocks_sampled, report.blobs);
+                }
                 if report.skipped_links > 0 {
                     eprintln!("note: {} symbolic link(s) inside the inputs were skipped (links are never followed or recreated)", report.skipped_links);
                 }

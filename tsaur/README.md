@@ -26,7 +26,7 @@ end-to-end MCP session (both protocol eras).
 
 ```text
 tsaur pack   <out.tsr> <inputs...> [--block <MiB> | --block-kib <KiB> | --solid <MiB> | --granular]
-             [--chunk fine|p2p|archive] [--level N] [--codec best|zstd|xz|ppmd] [--jobs N] [--no-dict] [--no-container] [--no-delta]
+             [--chunk fine|p2p|archive] [--level N] [--codec best|zstd|xz|ppmd] [--effort 1..5] [--jobs N] [--no-dict] [--no-container] [--no-delta]
              [--ref base.tsr ...] [--password PW | TSAUR_PASSWORD env] [--kdf-memory-mib N] [--to recipient.pub ...]
              [--sign-key FILE] [--keep-mtime] [--timestamp] [--pieces] [--piece-size-kib N] [--parity-pct N]
              [--canonical] [--json]
@@ -37,7 +37,10 @@ Modes (all bit-exact, all verified per chunk):
   --granular one chunk per blob + trained dictionary                         -> best random access / P2P fetch, weakest ratio
 Codecs per block: --codec best (default: zstd -19, xz/LZMA2 9e and — on text-like blocks — PPMd H are tried, the
 smallest is kept; blocks zstd cannot shrink by 3 % are stored; x86 and ARM64 branch filters are tried on machine
-code), zstd (fast: --level 9 ≈ 200 MB/s), xz, ppmd. Delta coding (--no-delta to disable): an entry that is a new
+code), zstd (fast: --level 9 ≈ 200 MB/s), xz, ppmd. --effort 1..5 (best only; default 5 = every codec on every
+block): at 2..4 the filter and the codec are decided on a sample of each block above 128 KiB (8+ evenly spaced 8 KiB
+slices) and only the winner runs on the whole block; 1 = zstd only, 2 = zstd/xz, 3 = zstd/xz/PPMd, 4 = 3 plus an xz
+check when PPMd wins the sample. Delta coding (--no-delta to disable): an entry that is a new
 version of content the archive or a --ref archive already holds is also tried with zstd against that content as
 dictionary (codec "zstd+delta", blob field `d` = dictionary chunks); the smaller encoding wins.
 Containers: ZIP/OPC members and PDF FlateDecode streams are inverted with preflate; JPEG files and DCTDecode streams

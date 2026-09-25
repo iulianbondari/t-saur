@@ -83,8 +83,11 @@ cargo build --release                       # full build; add --no-default-featu
 
 Options worth knowing: `--no-lepton` (full build: store JPEGs as they are, so that the lite build can open the
 archive), `unpack --overwrite` (existing files are never replaced without it), `--solid 8` (bigger blocks, best
-ratio), `--granular` (one chunk per blob, random access per chunk), `--codec zstd --level 9` (fast mode), `--ref
-base.tsr` (store only what `base.tsr` does not already hold),
+ratio), `--granular` (one chunk per blob, random access per chunk), `--codec zstd --level 9` (fast mode), `--effort 3`
+(`--codec best` with the codec chosen on a sample of each block: 0.8–1.3× the CPU time of `--codec zstd` within
+0.4 point of the full trial, which costs 2–2.2×; the default `--effort 5` tries every codec on every block), `--ref
+base.tsr` (store only what
+`base.tsr` does not already hold),
 `--canonical` (hybrid fidelity: also store the Markdown/text view of every DOCX and PDF under `.tsaur/views/`, with
 token estimates, so agents read documents without converting; corpus A grows from 62.2 % to 65.4 % for 4 views),
 `--password` / `--to recipient.pub` / `--sign-key`, `--pieces` (transport pieces + Reed-Solomon parity sidecars).

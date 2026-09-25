@@ -4,6 +4,32 @@ All notable changes to T-saur are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semantic versioning once
 0.1.0 is tagged. Percentages quoted below are archive size relative to the input: lower is better.
 
+## [Unreleased]
+
+- **`pack --effort 1..5`** (roadmap 1.1, "speed of `--codec best`"; design in
+  `docs/design/plans/1.1-codec-sampling.md`): `--codec best` can decide the codec of each block on
+  a sample instead of running every codec on every block. The sample is eight evenly spaced 8 KiB
+  slices (one more per 128 KiB of block, up to 32; offsets 4-byte aligned so the ARM64 branch
+  filter's word alignment survives), never the block prefix (a prefix picks the wrong codec on a
+  third of the benchmark blocks). Effort 1 = zstd only, 2 = zstd or xz on the sample (never PPMd:
+  fast extraction), 3 = zstd, xz or PPMd on the sample, 4 = 3 plus xz on the whole block whenever
+  PPMd wins the sample, 5 = the full trial. Blocks up to 128 KiB always run the full trial; the
+  incompressible-block shortcut, the filter heuristics and the tie-break order are the ones of the
+  full trial, applied to the sample. `PackOptions::effort` (default 5), `PackReport::blocks_sampled`
+  (also in `--json`). **The default output is unchanged byte for byte**: `--effort 5` is the
+  unchanged code path, the golden archives are reproduced at every effort (their blobs are below
+  the threshold; pinned by a test), and the effort is not recorded in the archive, so no format
+  or writer-generation change (`tsaur-core/1.0`). Measured on a shared 4-vCPU Linux container,
+  three runs, medians of the `pack` process CPU (`benchmarks/corpus` / `corpus_versions` /
+  `corpus_binary` from `build_extra_corpora.py`, here libc, libstdc++ and the `tsaur` binary,
+  15.6 MB): effort 3 costs 1.25× / 1.05× / 0.84× the CPU of `--codec zstd` where effort 5 costs
+  2.2× / 2.0× / 2.2×, and it loses +0.00 / +0.37 / −0.05 point of ratio against effort 5 (the
+  sample judges "looks like text" and the x86 filter on the strided sample rather than on the
+  block prefix, which is why machine code gains a little); effort 4 recovers the 0.37 point at
+  1.5× zstd; with `--solid 4` every effort 2..4 matches effort 5 within 0.01 point at 1.3–1.5×
+  zstd. The default stays 5 in this cycle; a later release may move it to 3 as a
+  writer-generation bump.
+
 ## [1.0.0-rc.1] — 2026-09-24 (release candidate)
 
 Publication preparation after the tag (documents and tooling only): `CODE_OF_CONDUCT.md`,

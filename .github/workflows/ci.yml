@@ -112,12 +112,20 @@ jobs:
           mkdir -p det && printf 'the same input must give the same archive everywhere\n%.0s' {1..5000} > det/a.txt
           printf 'fixed bytes for the determinism check\n%.0s' {1..2000} > det/b.bin
           "./tsaur/target/release/$bin" pack det.tsr det --codec zstd
+          # the same fixture with the codec decided on a sample (its 275 KiB block is above the
+          # 128 KiB full-trial threshold): the sampled path must be as deterministic as the default
+          "./tsaur/target/release/$bin" pack det-effort3.tsr det --effort 3
           "$py" - <<'EOF'
           import hashlib, pathlib, platform
-          h = hashlib.sha256(pathlib.Path('det.tsr').read_bytes()).hexdigest()
-          # one line per platform, newline-terminated: the compare job concatenates these files
-          pathlib.Path('det-' + platform.system().lower() + '.sha256').write_text(f"{h}  {platform.system().lower()}\n")
-          print(platform.system(), h)
+          # one line per archive, "<sha256>  <platform> <variant>", newline-terminated: the compare
+          # job concatenates these files
+          plat = platform.system().lower()
+          lines = []
+          for variant, name in (("default", "det.tsr"), ("effort3", "det-effort3.tsr")):
+              h = hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()
+              lines.append(f"{h}  {plat} {variant}\n")
+              print(plat, variant, h)
+          pathlib.Path('det-' + plat + '.sha256').write_text(''.join(lines))
           EOF
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -134,21 +142,25 @@ jobs:
           merge-multiple: true
       - name: Compare archive hashes across platforms
         run: |
-          # Each file holds "<sha256>  <platform>\n". One file per matrix entry is required (two
-          # on pull requests, three on pushes to main and manual runs) and exactly one distinct
-          # hash; the earlier form (`cat | sort -u | wc -l` over files without a trailing newline)
-          # joined the hashes into one line and never compared.
+          # Each file holds one line per archive variant, "<sha256>  <platform> <variant>\n". One
+          # file per matrix entry is required (two on pull requests, three on pushes to main and
+          # manual runs) and exactly one distinct hash per variant; the earlier form (`cat | sort -u
+          # | wc -l` over files without a trailing newline) joined the hashes into one line and
+          # never compared.
           python3 - <<'EOF'
           import os, pathlib, sys
           expected = 2 if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request' else 3
           files = sorted(pathlib.Path('.').glob('det-*.sha256'))
-          rows = [f.read_text().split() for f in files]
-          for f, r in zip(files, rows):
-              print(f.name, *r)
-          hashes = {r[0] for r in rows}
-          if len(files) != expected or any(len(r) != 2 or len(r[0]) != 64 for r in rows):
-              sys.exit(f"expected {expected} well-formed hash files, got {len(files)}: {rows}")
-          if len(hashes) != 1:
-              sys.exit(f"the archive differs between platforms: {sorted(hashes)}")
-          print(f"identical on every platform of this run ({', '.join(r[1] for r in rows)})")
+          rows = [line.split() for f in files for line in f.read_text().splitlines()]
+          for r in rows:
+              print(*r)
+          variants = ('default', 'effort3')
+          if len(files) != expected or any(len(r) != 3 or len(r[0]) != 64 or r[2] not in variants for r in rows):
+              sys.exit(f"expected {expected} well-formed hash files with the variants {variants}, got {len(files)}: {rows}")
+          for v in variants:
+              vrows = [r for r in rows if r[2] == v]
+              hashes = {r[0] for r in vrows}
+              if len(vrows) != expected or len(hashes) != 1:
+                  sys.exit(f"the {v} archive differs between platforms: {sorted(hashes)} ({len(vrows)} rows)")
+              print(f"{v}: identical on every platform of this run ({', '.join(r[1] for r in vrows)})")
           EOF

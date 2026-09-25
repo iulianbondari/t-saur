@@ -116,6 +116,40 @@ fn lite_default_archive_is_universal_and_equals_no_lepton_output_of_the_full_bui
 }
 
 #[test]
+fn efforts_1_to_5_reproduce_the_golden_archives_because_their_blocks_are_small() {
+    // `--effort` decides the codec on a sample only for blocks above the full-trial threshold
+    // (128 KiB at the default block size). Every golden archive holds one blob below it, so
+    // efforts 2..5 reproduce the goldens by construction; effort 1 (zstd only) reproduces them only
+    // because their blobs happen to be zstd blobs. Both facts are pinned here: if the golden inputs
+    // are ever regenerated larger, or with a blob that is not zstd, this test fails without the
+    // design being wrong; the message says which fact broke.
+    let threshold = tsaur_core::codec::sample_full_trial_max(1 << 20);
+    for name in ["full-default.tsr", "lite-default.tsr", "canonical.tsr", "base.tsr", "incremental.tsr"] {
+        let r = Reader::open(&golden().join(name), None).unwrap();
+        for b in &r.index.blobs {
+            assert!(b.ulen as usize <= threshold, "{name}: a blob of {} bytes exceeds the full-trial threshold {threshold}: efforts 2..4 would sample it", b.ulen);
+            assert!(matches!(b.codec, tsaur_core::codec::ZSTD | tsaur_core::codec::ZSTD_DELTA), "{name}: blob codec {} is not zstd: effort 1 could not reproduce it", tsaur_core::codec::name(b.codec));
+        }
+    }
+    let out = temp("efforts");
+    let lite = std::fs::read(golden().join("lite-default.tsr")).unwrap();
+    for effort in 1..=5u8 {
+        let again = out.join(format!("lite-e{effort}.tsr"));
+        let rep = pack(std::slice::from_ref(&golden().join("inputs")), &again, PackOptions { effort, ..no_lepton() }).unwrap();
+        assert_eq!(rep.blocks_sampled, 0, "effort {effort}: no golden block is sampled");
+        assert_eq!(std::fs::read(&again).unwrap(), lite, "effort {effort} no longer reproduces lite-default.tsr");
+        #[cfg(feature = "lepton")]
+        {
+            let full = out.join(format!("full-e{effort}.tsr"));
+            let rep = pack(std::slice::from_ref(&golden().join("inputs")), &full, PackOptions { effort, ..PackOptions::default() }).unwrap();
+            assert_eq!(rep.blocks_sampled, 0);
+            assert_eq!(std::fs::read(&full).unwrap(), std::fs::read(golden().join("full-default.tsr")).unwrap(), "effort {effort} no longer reproduces full-default.tsr");
+        }
+    }
+    let _ = std::fs::remove_dir_all(&out);
+}
+
+#[test]
 fn canonical_archive_keeps_originals_bit_exact_and_serves_views() {
     let path = golden().join("canonical.tsr");
     let mut r = Reader::open(&path, None).unwrap();
