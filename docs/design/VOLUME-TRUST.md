@@ -94,7 +94,8 @@ cannot choose where the receiver writes.
 * **Freshness.** Descriptors are immutable and content-derived; there is no "newer version" a
   hash could protect against being rolled back.
 * **Availability.** A correct hash cannot recover data nobody holds; a peer can refuse, stall
-  (bounded by the 30 s timeouts) or run out of connections.
+  (bounded by the 30 s timeouts), run out of connections, or throttle every client behind its
+  bandwidth cap.
 
 ## 6. Two transports: plain TCP, and TLS with locally pinned identities
 
@@ -127,6 +128,7 @@ the client verify whom it talks to?) and **client authorization** (who may fetch
 | `serve --expose-lan --allow-anyone` | **none** | **none** | **anyone** who can reach the port |
 | `serve --expose-lan --tls-identity s.key --allow-anyone` | TLS 1.3 | yes: clients pin its fingerprint with `--peer-id` | **anyone** who can reach the port |
 | `serve --expose-lan --tls-identity s.key --allow <fp> ...` | TLS 1.3 | yes | the listed client fingerprints only (mutual TLS) |
+| `serve --expose-lan --tls-identity s.key --allow-set <set id>=<fp> ...` (also `--allow-file`) | TLS 1.3 | yes | listed fingerprints, each for its own sets (mutual TLS); a set outside a client's lists is answered like an unknown set (§6.4) |
 
 `--expose-lan` alone is refused: who may fetch has to be named, either with `--allow` (client
 fingerprints, needs `--tls-identity`) or with `--allow-anyone`. Anonymous access is therefore
@@ -154,7 +156,10 @@ Rules that follow from the pinning:
   inside the `.tsr`).
 * **Keys are files.** Whoever can read `peer.key` can impersonate that peer; keep it with the
   same care as an SSH key. Losing it means creating a new identity and re-pinning it on the
-  other side; there is no revocation list because there is no authority.
+  other side. Revocation is local because there is no authority: each side may pass
+  `--revoke FILE`, a text file of fingerprints it refuses even when they are pinned or allowed
+  (§6.3). A revocation reaches the other side through the same trusted channel as a
+  fingerprint; nothing on the wire can add or remove one, and the file is read once at start-up.
 * **Plain and TLS do not mix.** A plain `fetch` against a TLS `serve`, or the reverse, fails at
   once (the plain side sees non-ASCII bytes or a closed connection, the TLS side sees an invalid
   record) without a fallback in either direction, so a misconfiguration cannot silently
@@ -162,9 +167,50 @@ Rules that follow from the pinning:
 * **Exposure stays explicit.** `--expose-lan` is required for a non-loopback address in both
   modes, and it must be paired with `--allow` or `--allow-anyone` (table above).
 * **Limits apply to every client, pinned or not.** A pinned identity says who a client is, not
-  that it behaves: the per-address request rate, the connection counts and the time budget of
-  each connection (`VOLUME-SETS.md` §8.2) apply in both modes. In TLS mode a connection above
-  those limits is closed before the handshake, and the client retries with a bounded back-off.
+  that it behaves: the per-address request rate, the connection counts, the cap on distinct
+  source addresses, the time budget of each connection and the global bandwidth cap
+  (`VOLUME-SETS.md` §8.2) apply in both modes. In TLS mode a connection above the counts is
+  closed before the handshake, and the client retries with a bounded back-off. The bandwidth
+  cap is shared by all connections and the time a connection spends throttled is credited to
+  its budget, so the cap can never make a well-behaved client look too slow. A source address
+  is a resource key, not an identity: several clients behind one NAT share one address slot.
+
+### 6.3 Revocation
+
+`--revoke FILE` names a text file with one certificate fingerprint per line (64 hex characters;
+colons and letter case tolerated; `#` starts a comment; blank lines ignored; at most 1 MiB, so a
+wrong path fails fast). `serve` and `fetch` read it once at start-up (restart to apply a change)
+and refuse every fingerprint in it:
+
+* **Before the handshake.** `serve` removes revoked identities from its effective allow lists
+  and reports how many (`revoked K` on the `access:` line, `"revoked"` in `--json`); when nothing
+  would be left it refuses to start (exit 3, "every allowed identity is revoked"), because a
+  server nobody can use hides a mistake. `fetch` refuses the whole command (exit 3) when any
+  `--peer-id` is revoked, naming the file: skipping the peer silently would make a typo in the
+  wrong file look like an unreachable peer.
+* **At the handshake.** The verifiers check the revocation list before the pin or the allow
+  list, so a revoked client is closed by the server without a reply and a revoked server fails
+  on the client with "is revoked", before any request byte, whatever the lists say.
+* **What it does not do.** No propagation, no expiry, no effect on `--allow-anyone` (anonymous
+  clients present no certificate, so `serve --revoke` requires an allow list; `fetch --revoke`
+  requires `--peer-id`, and `serve --revoke` requires `--tls-identity`). A server whose own
+  fingerprint is in the file starts with a warning; clients decide what they pin.
+
+### 6.4 Which client may read which set
+
+`--allow <fp>` admits a client to every served set. `--allow-set <set id>=<fp>` (repeatable;
+the set id may be a prefix of at least 16 hex characters that matches exactly one served set,
+resolved before anything is bound) and `--allow-file FILE` (one rule per line, `<fingerprint>
+[set id ...]`, no set id = every set) admit a client to specific sets only. The handshake admits
+the union of all lists (minus revocations); after it, the server reads the client's verified
+certificate and consults the lists for every request: `SETS` lists only the sets the client may
+read, and `DESCRIPTOR`, `HAVE` and `PIECE` for another set are answered exactly like an unknown
+set (`ERR 404 unknown set`), so a client learns nothing about sets it may not read, not even
+that they exist. The `404` was chosen over a silent close on purpose: a close is what the client
+treats as "busy" and retries sixteen times, which would turn an authorization failure into a
+slow one. Per-set lists need mutual TLS (`--tls-identity`) and exclude `--allow-anyone`; the
+start-up listing shows `readers: all | N` per set so an operator can check the mapping without
+exposing fingerprints.
 
 What is still missing after this step: more than two participants per fetch, measurements on
 two real devices (`TWO-DEVICE-BENCHMARK-PLAN.md`), and an independent review of the whole

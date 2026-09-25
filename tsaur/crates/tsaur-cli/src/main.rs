@@ -332,6 +332,27 @@ enum VolumesCmd {
         /// authenticated; without it nothing is
         #[arg(long)]
         allow_anyone: bool,
+        /// Fingerprint allowed to read ONE served set only, as `<set id or prefix of 16+>=<hex>`;
+        /// repeatable; needs --tls-identity. The other sets are answered like unknown sets
+        #[arg(long = "allow-set", value_name = "SET=FINGERPRINT")]
+        allow_set: Vec<String>,
+        /// File of rules, one per line: `<fingerprint> [set id ...]` (no set id = every set,
+        /// `#` comments); combined with --allow and --allow-set; needs --tls-identity
+        #[arg(long)]
+        allow_file: Option<PathBuf>,
+        /// File of certificate fingerprints refused even when allowed (one per line, `#`
+        /// comments), read once at start-up (restart to apply changes); needs --tls-identity
+        /// and an allow list
+        #[arg(long)]
+        revoke: Option<PathBuf>,
+        /// Bytes sent per second in total, in KiB/s, shared by every connection (a client gets
+        /// the cap divided by the active connections; default: unlimited)
+        #[arg(long)]
+        max_bandwidth_kib: Option<u64>,
+        /// Distinct source addresses served at the same time; a further address is turned away
+        /// (503, or a silent close over TLS) until one of them leaves
+        #[arg(long, default_value_t = 64)]
+        max_peers: usize,
     },
     /// Fetch missing volumes of a set from peers (`--from host:port`, repeatable), verifying every piece
     /// against the expected descriptor; interrupted fetches resume; then join offline
@@ -364,6 +385,10 @@ enum VolumesCmd {
         /// Identity file made by `volumes keygen`, presented to peers that require client certificates
         #[arg(long)]
         tls_identity: Option<PathBuf>,
+        /// File of certificate fingerprints refused even when pinned with --peer-id (one per line,
+        /// `#` comments); a revoked peer fails the command before any connection
+        #[arg(long)]
+        revoke: Option<PathBuf>,
         /// Stop after this many pieces (leaves resumable `.partial` files; for interruption tests)
         #[arg(long)]
         stop_after: Option<usize>,
@@ -377,6 +402,74 @@ enum VolumesCmd {
     },
     /// Print the fingerprint of an identity file made by `keygen`
     Fingerprint { identity: PathBuf },
+}
+
+/// The client allow lists of `volumes serve`: `--allow` (every set), `--allow-set SET=FP` and the
+/// rules of `--allow-file` (`<fingerprint> [set id ...]`). Set ids may be prefixes of at least 16
+/// hex characters; each must match exactly one served set, resolved before anything is bound.
+/// (fingerprints that may read every set, (set id, fingerprint) pairs for the restricted ones)
+type AllowLists = (Vec<[u8; 32]>, Vec<([u8; 32], [u8; 32])>);
+
+fn parse_allow_lists(paths: &[PathBuf], allowed: &[String], allow_set: &[String], allow_file: Option<&std::path::Path>) -> anyhow::Result<AllowLists> {
+    let mut any_set: Vec<[u8; 32]> = allowed.iter().map(|a| tls::parse_fingerprint(a)).collect::<Result<_, _>>()?;
+    let mut pairs: Vec<(String, String, String)> = Vec::new(); // (set prefix, fingerprint, origin)
+    for rule in allow_set {
+        let Some((set, fp)) = rule.split_once('=') else {
+            return Err(Error::Invalid(format!("--allow-set {rule}: expected <set id>=<fingerprint>")).into());
+        };
+        pairs.push((set.trim().to_string(), fp.trim().to_string(), format!("--allow-set {rule}")));
+    }
+    if let Some(path) = allow_file {
+        let origin = path.display().to_string();
+        let len = std::fs::metadata(path).map_err(|e| Error::Missing(format!("allow file {origin}: {e}")))?.len();
+        if len > tls::MAX_REVOCATION_FILE {
+            return Err(Error::Limit(format!("allow file {origin}: {len} bytes, more than the {}-byte limit", tls::MAX_REVOCATION_FILE)).into());
+        }
+        let text = std::fs::read_to_string(path).map_err(|e| Error::Missing(format!("allow file {origin}: {e}")))?;
+        for (i, raw) in text.lines().enumerate() {
+            let line = raw.split('#').next().unwrap_or("").trim();
+            if line.is_empty() {
+                continue;
+            }
+            let mut words = line.split_whitespace();
+            let fp = words.next().unwrap_or("");
+            let where_ = format!("{origin}, line {}", i + 1);
+            let sets: Vec<&str> = words.collect();
+            if sets.is_empty() {
+                any_set.push(tls::parse_fingerprint(fp).map_err(|_| Error::Invalid(format!("allow file {where_}: fingerprint must be 64 hex characters")))?);
+            } else {
+                for set in sets {
+                    pairs.push((set.to_string(), fp.to_string(), where_.clone()));
+                }
+            }
+        }
+    }
+    let mut per_set = Vec::new();
+    if !pairs.is_empty() {
+        // the served set ids, from the volume headers (no verification here: `bind` verifies)
+        let known: Vec<String> = volumes::inspect(paths, false)?.into_iter().map(|s| s.set_id).collect();
+        for (prefix, fp, origin) in pairs {
+            let prefix = prefix.to_ascii_lowercase();
+            if prefix.len() < 16 || prefix.len() > 64 || !prefix.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err(Error::Invalid(format!("{origin}: a set id is 64 hex characters or a prefix of at least 16")).into());
+            }
+            let matches: Vec<&String> = known.iter().filter(|id| id.starts_with(&prefix)).collect();
+            let id = match matches.as_slice() {
+                [one] => *one,
+                [] => return Err(Error::Invalid(format!("{origin}: no served set has the id {prefix}")).into()),
+                many => return Err(Error::Invalid(format!("{origin}: {prefix} matches {} served sets, give more characters", many.len())).into()),
+            };
+            let mut set = [0u8; 32];
+            hex::decode_to_slice(id, &mut set).map_err(|_| Error::Corrupt("set id".into()))?;
+            let fp = tls::parse_fingerprint(&fp).map_err(|_| Error::Invalid(format!("{origin}: fingerprint must be 64 hex characters")))?;
+            per_set.push((set, fp));
+        }
+    }
+    any_set.sort_unstable();
+    any_set.dedup();
+    per_set.sort_unstable();
+    per_set.dedup();
+    Ok((any_set, per_set))
 }
 
 fn parse_hex32(label: &str, s: &str) -> anyhow::Result<[u8; 32]> {
@@ -483,38 +576,84 @@ fn run_volumes(cmd: VolumesCmd, json: bool) -> anyhow::Result<i32> {
             }
             Ok(0)
         }
-        VolumesCmd::Serve { paths, listen, expose_lan, max_connections, max_connections_per_peer, max_requests_per_second, min_rate_kib, tls_identity, allowed, allow_anyone } => {
+        VolumesCmd::Serve {
+            paths,
+            listen,
+            expose_lan,
+            max_connections,
+            max_connections_per_peer,
+            max_requests_per_second,
+            min_rate_kib,
+            tls_identity,
+            allowed,
+            allow_anyone,
+            allow_set,
+            allow_file,
+            revoke,
+            max_bandwidth_kib,
+            max_peers,
+        } => {
             let loopback = transfer::is_loopback(&listen)?;
+            let has_lists = !allowed.is_empty() || !allow_set.is_empty() || allow_file.is_some();
             // Three separate properties decide what a network client gets: encryption (TLS),
             // the server's identity (its pinned fingerprint) and client authorization (the allow
-            // list). Anonymous access is never implied: it has to be asked for by name.
+            // lists). Anonymous access is never implied: it has to be asked for by name.
             if !loopback && !expose_lan {
                 return Err(Error::Policy(format!(
                     "{listen} is not a loopback address; serving beyond this machine needs --expose-lan together with who may fetch: --tls-identity FILE --allow <fingerprint> ... (recommended) or --allow-anyone"
                 ))
                 .into());
             }
-            if tls_identity.is_none() && !allowed.is_empty() {
-                return Err(Error::Invalid("--allow needs --tls-identity: client identities are certificate fingerprints".into()).into());
+            if tls_identity.is_none() && has_lists {
+                return Err(Error::Invalid("--allow, --allow-set and --allow-file need --tls-identity: client identities are certificate fingerprints".into()).into());
             }
-            if !allowed.is_empty() && allow_anyone {
-                return Err(Error::Invalid("--allow and --allow-anyone exclude each other".into()).into());
+            if has_lists && allow_anyone {
+                return Err(Error::Invalid("--allow (and --allow-set, --allow-file) and --allow-anyone exclude each other".into()).into());
             }
-            if !loopback && allowed.is_empty() && !allow_anyone {
+            if !loopback && !has_lists && !allow_anyone {
                 return Err(Error::Policy(format!(
                     "{listen} is reachable from the network: say who may fetch, either --tls-identity FILE --allow <fingerprint> ... (encrypted, server authenticated, listed clients only) or --allow-anyone (anyone who can reach the port reads every served piece)"
                 ))
                 .into());
             }
-            let (tls_cfg, identity) = match &tls_identity {
-                None => (None, None),
+            if revoke.is_some() && tls_identity.is_none() {
+                return Err(Error::Invalid("--revoke needs --tls-identity: revocations are certificate fingerprints, and plain connections carry none".into()).into());
+            }
+            if revoke.is_some() && allow_anyone {
+                return Err(
+                    Error::Invalid("--revoke needs --allow, --allow-set or --allow-file: with --allow-anyone clients present no certificate, so there is nothing to revoke against".into()).into()
+                );
+            }
+            if max_bandwidth_kib == Some(0) {
+                return Err(Error::Invalid("--max-bandwidth-kib must be at least 1".into()).into());
+            }
+            let revocations = match &revoke {
+                Some(path) => tls::Revocations::load(path)?,
+                None => tls::Revocations::default(),
+            };
+            let (tls_cfg, identity, acl, revoked_hits) = match &tls_identity {
+                None => (None, None, transfer::Acl::everyone(), 0usize),
                 Some(path) => {
                     let id = tls::load(path)?;
-                    let allowed_ids = allowed.iter().map(|a| tls::parse_fingerprint(a)).collect::<Result<Vec<_>, _>>()?;
-                    if allowed_ids.is_empty() && !allow_anyone {
-                        return Err(Error::Policy("--tls-identity needs --allow <fingerprint> (repeatable) or --allow-anyone".into()).into());
+                    if !has_lists && !allow_anyone {
+                        return Err(Error::Policy("--tls-identity needs --allow <fingerprint> (repeatable), --allow-set, --allow-file or --allow-anyone".into()).into());
                     }
-                    (Some(tls::server_config(&id, &allowed_ids)?), Some((id, allowed_ids.len())))
+                    if revocations.contains(&id.fingerprint) {
+                        eprintln!("warning: this server's own identity is listed in {}; clients decide what they pin", revoke.as_ref().map(|p| p.display().to_string()).unwrap_or_default());
+                    }
+                    // the lists, with revoked identities removed before anything is bound
+                    let (mut any_set, mut per_set) = parse_allow_lists(&paths, &allowed, &allow_set, allow_file.as_deref())?;
+                    let before: std::collections::BTreeSet<[u8; 32]> = any_set.iter().copied().chain(per_set.iter().map(|(_, fp)| *fp)).collect();
+                    any_set.retain(|fp| !revocations.contains(fp));
+                    per_set.retain(|(_, fp)| !revocations.contains(fp));
+                    let hits = before.iter().filter(|fp| revocations.contains(fp)).count();
+                    if has_lists && any_set.is_empty() && per_set.is_empty() {
+                        return Err(
+                            Error::Policy(format!("every allowed identity is revoked by {}; nothing could connect", revoke.as_ref().map(|p| p.display().to_string()).unwrap_or_default())).into()
+                        );
+                    }
+                    let acl = if allow_anyone { transfer::Acl::everyone() } else { transfer::Acl::new(any_set, per_set) };
+                    (Some(tls::server_config_with(&id, &acl.admitted(), &revocations)?), Some(id), acl, hits)
                 }
             };
             let limits = transfer::ServerLimits {
@@ -523,10 +662,13 @@ fn run_volumes(cmd: VolumesCmd, json: bool) -> anyhow::Result<i32> {
                 timeout: transfer::TIMEOUT,
                 max_requests_per_second: max_requests_per_second.max(1),
                 min_rate: min_rate_kib.max(1).saturating_mul(1024),
+                max_bandwidth: max_bandwidth_kib.map(|k| k.saturating_mul(1024)),
+                max_peers: max_peers.max(1),
             };
-            let server = transfer::Server::bind_tls(&paths, &listen, limits, tls_cfg)?;
-            let fingerprint = identity.as_ref().map(|(id, _)| hex::encode(id.fingerprint));
-            let allowed_clients = identity.as_ref().map(|(_, n)| *n).unwrap_or(0);
+            let allowed_clients = acl.admitted().len();
+            let restricted_clients = acl.restricted().len();
+            let server = transfer::Server::bind_acl(&paths, &listen, limits, tls_cfg, acl)?;
+            let fingerprint = identity.as_ref().map(|id| hex::encode(id.fingerprint));
             let scope = if loopback { "loopback" } else { "lan" };
             let clients = if loopback && identity.is_none() {
                 "local"
@@ -537,7 +679,11 @@ fn run_volumes(cmd: VolumesCmd, json: bool) -> anyhow::Result<i32> {
             };
             let access = match (&fingerprint, clients) {
                 (None, "local") => "loopback only, plain: processes on this machine".to_string(),
-                (Some(fp), "allow-list") => format!("{scope}, encrypted (TLS 1.3), server identity {fp}, clients: {allowed_clients} allowed identit{}", if allowed_clients == 1 { "y" } else { "ies" }),
+                (Some(fp), "allow-list") => format!(
+                    "{scope}, encrypted (TLS 1.3), server identity {fp}, clients: {allowed_clients} allowed identit{}{}, revoked {revoked_hits}",
+                    if allowed_clients == 1 { "y" } else { "ies" },
+                    if restricted_clients > 0 { format!(" ({restricted_clients} restricted to specific sets, answered 404 for the others)") } else { String::new() }
+                ),
                 (Some(fp), _) => format!("{scope}, encrypted (TLS 1.3), server identity {fp}, clients: ANYONE (no client authorization)"),
                 (None, _) => format!("{scope}, UNENCRYPTED, no server identity, clients: ANYONE who can reach this port"),
             };
@@ -558,12 +704,24 @@ fn run_volumes(cmd: VolumesCmd, json: bool) -> anyhow::Result<i32> {
             // pipe) must not take the server down, so write errors are ignored here on purpose.
             use std::io::Write;
             let mut out = std::io::stdout().lock();
+            let readers = |set_id: &str| -> Option<usize> {
+                let mut id = [0u8; 32];
+                hex::decode_to_slice(set_id, &mut id).ok()?;
+                server.acl().readers_of(&id)
+            };
             if json {
-                let access_json = serde_json::json!({"scope": scope, "encrypted": server.encrypted(), "server_identity": fingerprint, "clients": clients, "allowed_clients": allowed_clients});
+                let access_json = serde_json::json!({"scope": scope, "encrypted": server.encrypted(), "server_identity": fingerprint, "clients": clients, "allowed_clients": allowed_clients, "restricted_clients": restricted_clients, "revoked": revoked_hits, "revocations_file": revoke.as_ref().map(|p| p.display().to_string())});
+                let limits_json = serde_json::json!({"max_connections": limits.max_connections, "max_connections_per_peer": limits.max_connections_per_peer, "max_requests_per_second": limits.max_requests_per_second, "min_rate_kib": limits.min_rate / 1024, "max_bandwidth_kib": limits.max_bandwidth.map(|b| b / 1024), "max_peers": limits.max_peers});
+                let sets_json: Vec<serde_json::Value> = served
+                    .iter()
+                    .map(|s| serde_json::json!({"set_id": s.set_id, "archive_name": s.archive_name, "archive_size": s.archive_size, "volumes": s.volumes, "readers": readers(&s.set_id).map(serde_json::Value::from).unwrap_or(serde_json::Value::from("all"))}))
+                    .collect();
                 let _ = writeln!(
                     out,
                     "{}",
-                    serde_json::to_string(&serde_json::json!({"listening": addr.to_string(), "access": access_json, "tls": server.encrypted(), "fingerprint": fingerprint, "sets": served}))?
+                    serde_json::to_string(
+                        &serde_json::json!({"listening": addr.to_string(), "access": access_json, "limits": limits_json, "tls": server.encrypted(), "fingerprint": fingerprint, "sets": sets_json})
+                    )?
                 );
             } else {
                 let _ = writeln!(out, "listening on {addr} ({} set(s)){}", served.len(), if server.encrypted() { "  [tls]" } else { "" });
@@ -571,8 +729,22 @@ fn run_volumes(cmd: VolumesCmd, json: bool) -> anyhow::Result<i32> {
                 if let Some(fp) = &fingerprint {
                     let _ = writeln!(out, "  identity fingerprint {fp}  (clients pin it with --peer-id)");
                 }
+                if let Some(cap) = limits.max_bandwidth {
+                    let _ = writeln!(out, "  bandwidth cap {} KiB/s, shared by all connections", cap / 1024);
+                }
                 for s in &served {
-                    let _ = writeln!(out, "  set {}  {} ({} bytes)  volumes {:?}", &s.set_id[..16], s.archive_name, s.archive_size, s.volumes.iter().map(|i| i + 1).collect::<Vec<_>>());
+                    let readers = match readers(&s.set_id) {
+                        None => "all".to_string(),
+                        Some(n) => n.to_string(),
+                    };
+                    let _ = writeln!(
+                        out,
+                        "  set {}  {} ({} bytes)  volumes {:?}  readers: {readers}",
+                        &s.set_id[..16],
+                        s.archive_name,
+                        s.archive_size,
+                        s.volumes.iter().map(|i| i + 1).collect::<Vec<_>>()
+                    );
                 }
             }
             let _ = out.flush();
@@ -606,10 +778,13 @@ fn run_volumes(cmd: VolumesCmd, json: bool) -> anyhow::Result<i32> {
             }
             Ok(0)
         }
-        VolumesCmd::Fetch { set, descriptor, peers, out, local, volumes: which, join: join_out, peer_ids, tls_identity, stop_after } => {
+        VolumesCmd::Fetch { set, descriptor, peers, out, local, volumes: which, join: join_out, peer_ids, tls_identity, revoke, stop_after } => {
             let tls_opts = if peer_ids.is_empty() {
                 if tls_identity.is_some() {
                     return Err(Error::Invalid("--tls-identity needs one --peer-id per --from peer (the fingerprint printed by that peer's `serve`)".into()).into());
+                }
+                if revoke.is_some() {
+                    return Err(Error::Invalid("--revoke needs --peer-id: a plain connection has no server identity to revoke".into()).into());
                 }
                 None
             } else {
@@ -621,7 +796,20 @@ fn run_volumes(cmd: VolumesCmd, json: bool) -> anyhow::Result<i32> {
                     Some(path) => Some(tls::load(path)?),
                     None => None,
                 };
-                Some(transfer::ClientTls { identity, peer_ids: ids })
+                let revoked = match &revoke {
+                    Some(path) => tls::Revocations::load(path)?,
+                    None => tls::Revocations::default(),
+                };
+                if let Some((i, fp)) = ids.iter().enumerate().find(|(_, fp)| revoked.contains(fp)) {
+                    return Err(Error::Policy(format!(
+                        "peer identity {} (--from {}) is revoked by {}; edit the command instead of skipping the peer",
+                        hex::encode(fp),
+                        peers[i],
+                        revoke.as_ref().map(|p| p.display().to_string()).unwrap_or_default()
+                    ))
+                    .into());
+                }
+                Some(transfer::ClientTls { identity, peer_ids: ids, revoked })
             };
             let want = match which.as_str() {
                 "needed" => transfer::Want::Needed,

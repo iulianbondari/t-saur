@@ -6,6 +6,24 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [Unreleased]
 
+- **Network limits for the volume exchange** (roadmap 1.1; design in
+  `docs/design/plans/1.1-network-limits-and-supply-chain.md` part A, trust rules in
+  `docs/design/VOLUME-TRUST.md` §6.3-§6.4): `serve --revoke FILE` and `fetch --revoke FILE`
+  refuse certificate fingerprints even when pinned or allowed, checked at start-up (a server
+  whose every allowed identity is revoked refuses to start; a fetch whose pinned peer is
+  revoked fails before any connection) and again by the TLS verifiers at the handshake;
+  `serve --allow-set <set id>=<fp>` and `--allow-file` admit a client to specific sets only,
+  with the other sets answered like unknown sets (`404`) so that nothing about them is
+  disclosed; `serve --max-bandwidth-kib` caps the bytes sent per second across all connections
+  (one shared token bucket; the time a connection waits is credited to its budget, so the cap
+  never triggers the slow-client cut-off); `serve --max-peers` caps the distinct source
+  addresses served at once (default 64, a resource key rather than an identity). Library:
+  `tls::Revocations`, `server_config_with`, `client_config_with`, `transfer::Acl`,
+  `Server::bind_acl`, `ServerLimits::{max_bandwidth, max_peers}`, `ClientTls::revoked`
+  (`ClientTls` now implements `Default`), `list_peer_with`. The start-up lines report the
+  effective lists (`allowed`, `restricted`, `revoked`), the limits (`--json` gains a `limits`
+  object) and `readers:` per set. No change to the archive format or the wire protocol: a
+  1.0.0-rc.1 client works unchanged against a server with any of these options.
 - **Supply-chain checks in CI** (roadmap 1.1): `.github/workflows/supply-chain.yml` runs
   `cargo deny` (RustSec advisories, the license policy of `THIRD-PARTY-NOTICES.md` with the one
   LGPL exception, banned TLS stacks, crates.io as the only source) against `tsaur/deny.toml` on

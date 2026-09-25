@@ -41,6 +41,9 @@
 //! | waiting | 30 s connect / read / write timeouts on both sides | both |
 //! | connection budget | the request line (and a TLS handshake) must arrive within `timeout`; a response of L bytes must be consumed within max(`timeout`, L / `min_rate`) (`min_rate` 64 KiB/s); a peer that trickles bytes or stops reading is cut off and its slot released | server |
 //! | TLS | the handshake (and the peer's certificate check) completes before any request byte is read; in TLS mode an excess connection is closed without a reply instead of `ERR 503`, so no handshake is spent on it | server |
+//! | bandwidth | `ServerLimits::max_bandwidth` (unlimited by default): one token bucket of bytes shared by every connection, paid in slices of at most 1/8 s of the rate; the time a connection spends throttled is credited to its budget, so the cap never triggers the `min_rate` cut-off | server |
+//! | distinct addresses | `ServerLimits::max_peers` (64): source addresses with an open connection; a further address gets `ERR 503` (a silent close in TLS mode) until one leaves; an address is a resource key, not an identity | server |
+//! | authorization | the handshake admits the union of the global allow list and the per-set lists (`Acl`); a set outside a client's lists is answered like an unknown set (`404`), so a client learns nothing about sets it may not read; a revoked fingerprint (`tls::Revocations`) fails the handshake on either side even when pinned or allowed | server, client |
 //! | local file names | derived from the set id when the descriptor's archive name is not a safe single path component (`VolumeSet::volume_name`) | client, repair |
 //!
 //! Interrupted transfers resume: a volume being fetched lives under `<name>.partial` next to a
@@ -52,13 +55,13 @@
 use crate::chunk;
 use crate::error::{Error, Result};
 use crate::format;
-use crate::tls;
+use crate::tls::{self, Revocations};
 use crate::volumes::{self, VolumeSet, HEADER_LEN, MAX_DESCRIPTOR};
 use rustls::{ClientConfig, ClientConnection, ServerConfig, ServerConnection, StreamOwned};
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
@@ -119,11 +122,18 @@ pub struct ServerLimits {
     /// Bytes per second a client must at least consume: a response of L bytes has to be read
     /// within max(`timeout`, L / `min_rate`), after which the connection is closed.
     pub min_rate: u64,
+    /// Bytes per second the server sends in total, across all connections (`None`: unlimited).
+    /// One token bucket holding one second of the rate, shared by every connection in arrival
+    /// order; the effective rate of one client is the cap divided by the active connections.
+    pub max_bandwidth: Option<u64>,
+    /// Distinct source addresses with at least one open connection; a further address is turned
+    /// away like an excess connection (`503`, silent in TLS mode) until one of them leaves.
+    pub max_peers: usize,
 }
 
 impl Default for ServerLimits {
     fn default() -> Self {
-        Self { max_connections: 64, max_connections_per_peer: 8, timeout: TIMEOUT, max_requests_per_second: 200, min_rate: 64 << 10 }
+        Self { max_connections: 64, max_connections_per_peer: 8, timeout: TIMEOUT, max_requests_per_second: 200, min_rate: 64 << 10, max_bandwidth: None, max_peers: 64 }
     }
 }
 
@@ -145,17 +155,25 @@ struct Gate {
     total: AtomicUsize,
     per_ip: Mutex<HashMap<IpAddr, usize>>,
     buckets: Mutex<HashMap<IpAddr, Bucket>>,
+    /// The global bandwidth bucket (tokens are bytes), present when `max_bandwidth` is set.
+    throttle: Option<Mutex<Bucket>>,
 }
 
 impl Gate {
     fn new(limits: ServerLimits) -> Gate {
-        Gate { limits, total: AtomicUsize::new(0), per_ip: Mutex::new(HashMap::new()), buckets: Mutex::new(HashMap::new()) }
+        let throttle = limits.max_bandwidth.map(|rate| Mutex::new(Bucket { tokens: rate as f64, last: Instant::now() }));
+        Gate { limits, total: AtomicUsize::new(0), per_ip: Mutex::new(HashMap::new()), buckets: Mutex::new(HashMap::new()), throttle }
     }
 
     fn enter(&self, ip: IpAddr) -> Admit {
         let mut per_ip = self.per_ip.lock().unwrap_or_else(|e| e.into_inner());
         let mine = per_ip.get(&ip).copied().unwrap_or(0);
         if self.total.load(Ordering::Relaxed) >= self.limits.max_connections || mine >= self.limits.max_connections_per_peer {
+            return Admit::Busy;
+        }
+        // an address that is not present yet needs a free address slot (`per_ip` drops an
+        // address at its last `leave`, so "present" is exactly "has an open connection")
+        if mine == 0 && per_ip.len() >= self.limits.max_peers {
             return Admit::Busy;
         }
         // token bucket per source address: `max_requests_per_second` sustained, twice that in a burst
@@ -189,6 +207,86 @@ impl Gate {
         }
         self.total.fetch_sub(1, Ordering::Relaxed);
     }
+
+    /// Largest slice one write may take from the bandwidth bucket: at most an eighth of a
+    /// second of the rate, at least 4 KiB, so that no connection waits long for one grant.
+    fn slice_len(&self) -> Option<usize> {
+        self.limits.max_bandwidth.map(|rate| ((rate / 8) as usize).max(4 << 10))
+    }
+
+    /// Take `n` bytes from the shared bandwidth bucket and return how long the caller has to
+    /// wait before sending them (zero when tokens were available). The debt is recorded at once,
+    /// so concurrent writers queue up in arrival order; the caller sleeps outside the lock.
+    fn take_bytes(&self, n: usize) -> Duration {
+        let (Some(bucket), Some(rate)) = (&self.throttle, self.limits.max_bandwidth) else { return Duration::ZERO };
+        let rate = rate.max(1) as f64;
+        let mut b = bucket.lock().unwrap_or_else(|e| e.into_inner());
+        let now = Instant::now();
+        b.tokens = (b.tokens + now.duration_since(b.last).as_secs_f64() * rate).min(rate);
+        b.last = now;
+        b.tokens -= n as f64;
+        if b.tokens >= 0.0 {
+            Duration::ZERO
+        } else {
+            Duration::from_secs_f64(-b.tokens / rate)
+        }
+    }
+}
+
+/// Which client may read which set (`docs/design/VOLUME-TRUST.md` §6.4). The handshake admits
+/// every listed fingerprint; this decides, per request, whether the admitted client may read the
+/// set it asks for. A set outside a client's lists is answered like an unknown set.
+#[derive(Clone, Debug, Default)]
+pub struct Acl {
+    anyone: bool,
+    any_set: HashSet<[u8; 32]>,
+    per_set: HashMap<[u8; 32], HashSet<[u8; 32]>>,
+}
+
+impl Acl {
+    /// Every admitted connection may read every set (plain mode, `--allow-anyone`, and a plain
+    /// global allow list, where the handshake already decided).
+    pub fn everyone() -> Acl {
+        Acl { anyone: true, ..Acl::default() }
+    }
+
+    /// `any_set`: fingerprints that may read every served set; `per_set`: (set id, fingerprint)
+    /// pairs for clients restricted to specific sets.
+    pub fn new(any_set: impl IntoIterator<Item = [u8; 32]>, per_set: impl IntoIterator<Item = ([u8; 32], [u8; 32])>) -> Acl {
+        let mut acl = Acl { anyone: false, any_set: any_set.into_iter().collect(), per_set: HashMap::new() };
+        for (set, fp) in per_set {
+            acl.per_set.entry(set).or_default().insert(fp);
+        }
+        acl
+    }
+
+    /// Every fingerprint the handshake must admit (the union of all lists).
+    pub fn admitted(&self) -> Vec<[u8; 32]> {
+        let mut all: Vec<[u8; 32]> = self.any_set.iter().copied().chain(self.per_set.values().flatten().copied()).collect();
+        all.sort_unstable();
+        all.dedup();
+        all
+    }
+
+    /// Fingerprints that may read only some sets (none of them is in the global list).
+    pub fn restricted(&self) -> Vec<[u8; 32]> {
+        let mut r: Vec<[u8; 32]> = self.per_set.values().flatten().copied().filter(|fp| !self.any_set.contains(fp)).collect();
+        r.sort_unstable();
+        r.dedup();
+        r
+    }
+
+    /// How many identities may read `set`: `None` when everyone admitted may.
+    pub fn readers_of(&self, set: &[u8; 32]) -> Option<usize> {
+        if self.anyone {
+            return None;
+        }
+        Some(self.any_set.len() + self.per_set.get(set).map(|s| s.iter().filter(|fp| !self.any_set.contains(*fp)).count()).unwrap_or(0))
+    }
+
+    pub fn may_read(&self, client: Option<&[u8; 32]>, set: &[u8; 32]) -> bool {
+        self.anyone || client.is_some_and(|c| self.any_set.contains(c) || self.per_set.get(set).is_some_and(|s| s.contains(c)))
+    }
 }
 
 /// A read-only server for the volumes found under `paths`.
@@ -197,6 +295,7 @@ pub struct Server {
     listener: TcpListener,
     gate: Arc<Gate>,
     tls: Option<Arc<ServerConfig>>,
+    acl: Arc<Acl>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -218,8 +317,20 @@ impl Server {
     }
 
     /// Like `bind_with`; with `tls` every connection is a TLS session using that configuration
-    /// (see `tls::server_config`: the server's own identity and the client allow list).
+    /// (see `tls::server_config`: the server's own identity and the client allow list). Every
+    /// admitted client may read every set.
     pub fn bind_tls(paths: &[PathBuf], listen: &str, limits: ServerLimits, tls: Option<Arc<ServerConfig>>) -> Result<Server> {
+        Self::bind_acl(paths, listen, limits, tls, Acl::everyone())
+    }
+
+    /// Like `bind_tls` with per-request authorization: `acl` decides which admitted client may
+    /// read which set (the TLS configuration must admit `acl.admitted()`; the two are built
+    /// together by the CLI). Without `tls` there is no client identity, so `acl` must be
+    /// `Acl::everyone()` (anything else would refuse every request).
+    pub fn bind_acl(paths: &[PathBuf], listen: &str, limits: ServerLimits, tls: Option<Arc<ServerConfig>>, acl: Acl) -> Result<Server> {
+        if tls.is_none() && !acl.anyone {
+            return Err(Error::Invalid("per-set client lists need TLS: a plain connection carries no client identity".into()));
+        }
         let statuses = volumes::inspect(paths, true)?;
         let mut sets = HashMap::new();
         for st in statuses {
@@ -230,7 +341,7 @@ impl Server {
             sets.insert(id, Served { set: st.set, descriptor, volumes: vols });
         }
         let listener = TcpListener::bind(listen).map_err(|e| Error::Io(std::io::Error::other(format!("bind {listen}: {e}"))))?;
-        Ok(Server { sets: Arc::new(sets), listener, gate: Arc::new(Gate::new(limits)), tls })
+        Ok(Server { sets: Arc::new(sets), listener, gate: Arc::new(Gate::new(limits)), tls, acl: Arc::new(acl) })
     }
 
     pub fn local_addr(&self) -> Result<SocketAddr> {
@@ -244,6 +355,10 @@ impl Server {
 
     pub fn limits(&self) -> ServerLimits {
         self.gate.limits
+    }
+
+    pub fn acl(&self) -> &Acl {
+        &self.acl
     }
 
     pub fn served(&self) -> Vec<ServedSet> {
@@ -295,11 +410,12 @@ impl Server {
                     let sets = self.sets.clone();
                     let gate = self.gate.clone();
                     let tls = self.tls.clone();
+                    let acl = self.acl.clone();
                     std::thread::spawn(move || {
-                        let mut stream = Deadline::new(stream, limits.timeout);
+                        let mut stream = Deadline::new(stream, limits.timeout, gate.clone());
                         match tls {
                             None => {
-                                let _ = handle(&mut stream, &sets, &limits);
+                                let _ = handle(&mut stream, &sets, &limits, &acl, None);
                             }
                             Some(cfg) => {
                                 if let Ok(conn) = ServerConnection::new(cfg) {
@@ -307,7 +423,9 @@ impl Server {
                                     // The handshake (with the client's certificate check) completes before any
                                     // request is read; when it fails the connection is simply closed.
                                     if session.conn.complete_io(&mut session.sock).is_ok() && !session.conn.is_handshaking() {
-                                        let _ = handle(&mut session, &sets, &limits);
+                                        // the verified client certificate, when the configuration asked for one
+                                        let client = session.conn.peer_certificates().and_then(|c| c.first()).map(tls::fingerprint);
+                                        let _ = handle(&mut session, &sets, &limits, &acl, client);
                                         session.conn.send_close_notify();
                                         let _ = session.flush();
                                     }
@@ -331,11 +449,13 @@ struct Deadline {
     inner: TcpStream,
     deadline: Instant,
     op: Duration,
+    /// The server's gate, for the shared bandwidth bucket.
+    gate: Arc<Gate>,
 }
 
 impl Deadline {
-    fn new(inner: TcpStream, op: Duration) -> Deadline {
-        Deadline { inner, deadline: Instant::now() + op, op }
+    fn new(inner: TcpStream, op: Duration, gate: Arc<Gate>) -> Deadline {
+        Deadline { inner, deadline: Instant::now() + op, op, gate }
     }
 
     fn slice(&self) -> std::io::Result<Duration> {
@@ -357,9 +477,22 @@ impl Read for Deadline {
 
 impl Write for Deadline {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        // Every byte the server sends (status lines, payloads, TLS records) passes here. With a
+        // bandwidth cap the write is clamped to one slice, paid from the shared bucket, and the
+        // time spent waiting is credited to this connection's budget: throttling by the server
+        // must never look like a client that reads too slowly.
+        let mut n = buf.len();
+        if let Some(max) = self.gate.slice_len() {
+            n = n.min(max).max(1);
+            let wait = self.gate.take_bytes(n);
+            if !wait.is_zero() {
+                std::thread::sleep(wait);
+                self.deadline += wait;
+            }
+        }
         let t = self.slice()?;
         self.inner.set_write_timeout(Some(t))?;
-        self.inner.write(buf)
+        self.inner.write(&buf[..n])
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -448,8 +581,10 @@ fn send_ok_from_file<W: Write>(stream: &mut W, file: &mut File, off: u64, len: u
 }
 
 /// Serve one request on an accepted connection (plain or TLS: anything that reads and writes
-/// under a time budget).
-fn handle<S: Read + Write + Budget>(stream: &mut S, sets: &HashMap<[u8; 32], Served>, limits: &ServerLimits) -> std::io::Result<()> {
+/// under a time budget). `client` is the verified certificate fingerprint of a mutually
+/// authenticated client (`None` for plain and anonymous connections); `acl` decides which sets it
+/// may read, and a set it may not read is answered exactly like an unknown one.
+fn handle<S: Read + Write + Budget>(stream: &mut S, sets: &HashMap<[u8; 32], Served>, limits: &ServerLimits, acl: &Acl, client: Option<[u8; 32]>) -> std::io::Result<()> {
     let line = {
         let mut reader = BufReader::new(&mut *stream);
         read_line_bounded(&mut reader)
@@ -464,14 +599,16 @@ fn handle<S: Read + Write + Budget>(stream: &mut S, sets: &HashMap<[u8; 32], Ser
     }
     match parts[1] {
         "SETS" => {
-            let list: Vec<(String, String, u64)> = sets.iter().map(|(id, s)| (hex::encode(id), s.set.archive_name.clone(), s.set.archive_size)).collect();
+            let list: Vec<(String, String, u64)> =
+                sets.iter().filter(|(id, _)| acl.may_read(client.as_ref(), id)).map(|(id, s)| (hex::encode(id), s.set.archive_name.clone(), s.set.archive_size)).collect();
             let bytes = format::cbor_encode(&list).map_err(|e| std::io::Error::other(e.to_string()))?;
             stream.allow(bytes.len() as u64, limits);
             send_ok(stream, &bytes)
         }
         "DESCRIPTOR" | "HAVE" | "PIECE" => {
             let Some(id) = parts.get(2).and_then(|h| parse_hex32(h)) else { return send_err(stream, 400, "bad set id") };
-            let Some(s) = sets.get(&id) else { return send_err(stream, 404, "unknown set") };
+            // a set the client may not read is indistinguishable from one that is not served
+            let Some(s) = sets.get(&id).filter(|_| acl.may_read(client.as_ref(), &id)) else { return send_err(stream, 404, "unknown set") };
             match parts[1] {
                 "DESCRIPTOR" => {
                     stream.allow(s.descriptor.len() as u64, limits);
@@ -594,11 +731,15 @@ fn exchange<S: Read + Write>(mut stream: S, peer: &str, line: &str, max_len: usi
 
 /// TLS settings of a client: `peer_ids[i]` is the expected certificate fingerprint of
 /// `FetchOptions::peers[i]` (same length, same order); `identity` is presented to servers that
-/// require client certificates and may be `None` for servers that accept anonymous clients.
-#[derive(Clone)]
+/// require client certificates and may be `None` for servers that accept anonymous clients;
+/// `revoked` fingerprints are refused even when pinned (a pinned peer that is revoked makes the
+/// whole fetch fail before any connection: skipping it silently would make a mistake in the
+/// wrong file look like an unreachable peer).
+#[derive(Clone, Default)]
 pub struct ClientTls {
     pub identity: Option<tls::Identity>,
     pub peer_ids: Vec<[u8; 32]>,
+    pub revoked: Revocations,
 }
 
 /// The per-peer connection settings of one fetch, built once, plus the accumulated timing.
@@ -618,7 +759,12 @@ impl Dial {
         for (i, peer) in peers.iter().enumerate() {
             let cfg = match tls {
                 None => None,
-                Some(t) => Some(tls::client_config(t.identity.as_ref(), t.peer_ids[i])?),
+                Some(t) => {
+                    if t.revoked.contains(&t.peer_ids[i]) {
+                        return Err(Error::Policy(format!("peer identity {} ({peer}) is revoked; edit the command instead of skipping the peer", hex::encode(t.peer_ids[i]))));
+                    }
+                    Some(tls::client_config_with(t.identity.as_ref(), t.peer_ids[i], &t.revoked)?)
+                }
             };
             configs.insert(peer.clone(), cfg);
         }
@@ -1036,12 +1182,63 @@ pub fn fetch(opts: &FetchOptions) -> Result<FetchReport> {
 /// List the sets a peer serves; with `peer_id` the connection is TLS pinned to that
 /// fingerprint, presenting `identity` when given.
 pub fn list_peer(peer: &str, identity: Option<&tls::Identity>, peer_id: Option<[u8; 32]>) -> Result<Vec<(String, String, u64)>> {
+    list_peer_with(peer, identity, peer_id, &Revocations::default())
+}
+
+/// `list_peer` with a revocation list (`ClientTls::revoked`): a revoked peer is refused before
+/// any connection, and would fail the handshake anyway.
+pub fn list_peer_with(peer: &str, identity: Option<&tls::Identity>, peer_id: Option<[u8; 32]>, revoked: &Revocations) -> Result<Vec<(String, String, u64)>> {
     let cfg = match peer_id {
-        Some(id) => Some(tls::client_config(identity, id)?),
+        Some(id) if revoked.contains(&id) => return Err(Error::Policy(format!("peer identity {} ({peer}) is revoked", hex::encode(id)))),
+        Some(id) => Some(tls::client_config_with(identity, id, revoked)?),
         None => None,
     };
     match request(peer, cfg.as_ref(), "SETS", MAX_SETS_RESPONSE, &mut Timing::default())? {
         Reply::Ok(bytes) => format::cbor_decode(&bytes),
         Reply::Refused(code, msg) => Err(refusal(peer, code, &msg)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ip(last: u8) -> IpAddr {
+        IpAddr::from([10, 0, 0, last])
+    }
+
+    #[test]
+    fn gate_refuses_a_new_address_beyond_max_peers() {
+        let g = Gate::new(ServerLimits { max_peers: 2, ..ServerLimits::default() });
+        assert_eq!(g.enter(ip(1)), Admit::Ok);
+        assert_eq!(g.enter(ip(2)), Admit::Ok);
+        assert_eq!(g.enter(ip(3)), Admit::Busy, "a third address needs a free address slot");
+        assert_eq!(g.enter(ip(1)), Admit::Ok, "a known address is not a new one");
+        g.leave(ip(2));
+        assert_eq!(g.enter(ip(3)), Admit::Ok, "the slot of an address that left is free again");
+        g.leave(ip(1));
+        g.leave(ip(1));
+        g.leave(ip(3));
+        assert_eq!(g.total.load(Ordering::Relaxed), 0);
+        assert!(g.per_ip.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn bandwidth_bucket_grants_a_burst_then_meters_the_rate() {
+        let g = Gate::new(ServerLimits { max_bandwidth: Some(1 << 20), ..ServerLimits::default() });
+        assert_eq!(g.slice_len(), Some(128 << 10));
+        // one second of the rate is free (the bucket starts full) ...
+        assert!(g.take_bytes(1 << 20).is_zero());
+        // ... the next megabyte has to wait about a second, and the debt accumulates in order
+        let w1 = g.take_bytes(1 << 20);
+        let w2 = g.take_bytes(1 << 20);
+        assert!(w1 > Duration::from_millis(900) && w1 <= Duration::from_millis(1100), "{w1:?}");
+        assert!(w2 > Duration::from_millis(1900) && w2 <= Duration::from_millis(2100), "{w2:?}");
+        // without a cap nothing waits and nothing is clamped
+        let free = Gate::new(ServerLimits::default());
+        assert_eq!(free.slice_len(), None);
+        assert!(free.take_bytes(usize::MAX / 2).is_zero());
+        // the smallest slice is 4 KiB whatever the rate
+        assert_eq!(Gate::new(ServerLimits { max_bandwidth: Some(1024), ..ServerLimits::default() }).slice_len(), Some(4096));
     }
 }

@@ -613,3 +613,109 @@ fn keygen_serve_and_fetch_over_pinned_tls() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn serve_and_fetch_check_revocations_and_per_set_lists_at_startup() {
+    use std::io::BufRead;
+    use std::process::Stdio;
+    let dir = fixture("policy");
+    let archive = dir.join("p.tsr");
+    let (code, _, stderr) = run(&["pack", &s(&archive), &s(&dir.join("src"))]);
+    assert_eq!(code, 0, "{stderr}");
+    let vol_dir = dir.join("volumes");
+    std::fs::create_dir_all(&vol_dir).unwrap();
+    let (code, stdout, stderr) = run(&["volumes", "split", &s(&archive), "--data", "2", "--parity", "1", "--out", &s(&vol_dir), "--json"]);
+    assert_eq!(code, 0, "{stderr}");
+    let set_id = serde_json::from_str::<serde_json::Value>(&stdout).unwrap()["set_id"].as_str().unwrap().to_string();
+    let mut fps = Vec::new();
+    for name in ["server.key", "a.key", "b.key"] {
+        let (code, stdout, stderr) = run(&["volumes", "keygen", "--out", &s(&dir.join(name)), "--json"]);
+        assert_eq!(code, 0, "{stderr}");
+        fps.push(serde_json::from_str::<serde_json::Value>(&stdout).unwrap()["fingerprint"].as_str().unwrap().to_string());
+    }
+    let (server_key, a, b) = (s(&dir.join("server.key")), fps[1].clone(), fps[2].clone());
+    let revoke_a = dir.join("revoked.txt");
+    std::fs::write(&revoke_a, format!("# lost laptop\n{a}   # trailing comment\n")).unwrap();
+    // every allowed identity revoked: refuse to start (exit 3) instead of serving nobody
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--tls-identity", &server_key, "--allow", &a, "--revoke", &s(&revoke_a)]);
+    assert_eq!(code, 3, "{stderr}");
+    assert!(stderr.contains("every allowed identity is revoked"), "{stderr}");
+    // --revoke needs TLS and an allow list; a bad file is exit 7 with the line number; a missing one exit 5
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--revoke", &s(&revoke_a)]);
+    assert_eq!(code, 7, "{stderr}");
+    assert!(stderr.contains("--revoke needs --tls-identity"), "{stderr}");
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--tls-identity", &server_key, "--allow-anyone", "--revoke", &s(&revoke_a)]);
+    assert_eq!(code, 7, "{stderr}");
+    let bad = dir.join("bad.txt");
+    std::fs::write(&bad, "# comment\n\nnot a fingerprint\n").unwrap();
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--tls-identity", &server_key, "--allow", &a, "--revoke", &s(&bad)]);
+    assert_eq!(code, 7, "{stderr}");
+    assert!(stderr.contains("line 3"), "{stderr}");
+    let (code, _, _) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--tls-identity", &server_key, "--allow", &a, "--revoke", &s(&dir.join("absent.txt"))]);
+    assert_eq!(code, 5);
+    // per-set rules: a prefix shorter than 16, an unknown set, and no TLS are refused before binding
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--tls-identity", &server_key, "--allow-set", &format!("{}={b}", &set_id[..15])]);
+    assert_eq!(code, 7, "{stderr}");
+    assert!(stderr.contains("prefix of at least 16"), "{stderr}");
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--tls-identity", &server_key, "--allow-set", &format!("{}={b}", "f".repeat(16))]);
+    assert_eq!(code, 7, "{stderr}");
+    assert!(stderr.contains("no served set"), "{stderr}");
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--allow-set", &format!("{set_id}={b}")]);
+    assert_eq!(code, 7, "{stderr}");
+    let (code, _, stderr) = run(&["volumes", "serve", &s(&vol_dir), "--listen", "127.0.0.1:0", "--tls-identity", &server_key, "--allow", &a, "--max-bandwidth-kib", "0"]);
+    assert_eq!(code, 7, "{stderr}");
+    // a valid configuration starts: A for every set, B for this set only (16-character prefix),
+    // a revoked identity from an allow file counted and removed, a bandwidth cap printed
+    let allow_file = dir.join("allow.txt");
+    std::fs::write(&allow_file, format!("# rules\n{}   # revoked below\n", fps[0])).unwrap();
+    let revoke_s = dir.join("revoked-s.txt");
+    std::fs::write(&revoke_s, format!("{}\n", fps[0])).unwrap();
+    let mut server = bin()
+        .args([
+            "volumes",
+            "serve",
+            &s(&vol_dir),
+            "--listen",
+            "127.0.0.1:0",
+            "--tls-identity",
+            &server_key,
+            "--allow",
+            &a,
+            "--allow-set",
+            &format!("{}={b}", &set_id[..16]),
+            "--allow-file",
+            &s(&allow_file),
+            "--revoke",
+            &s(&revoke_s),
+            "--max-bandwidth-kib",
+            "512",
+            "--max-peers",
+            "3",
+            "--json",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut lines = std::io::BufReader::new(server.stdout.take().unwrap());
+    let mut first = String::new();
+    lines.read_line(&mut first).unwrap();
+    let _ = server.kill();
+    let _ = server.wait();
+    let j: serde_json::Value = serde_json::from_str(&first).unwrap_or_else(|e| panic!("{e}: {first:?}"));
+    assert_eq!(j["access"]["allowed_clients"], 2, "{first}");
+    assert_eq!(j["access"]["restricted_clients"], 1, "{first}");
+    assert_eq!(j["access"]["revoked"], 1, "{first}");
+    assert_eq!(j["limits"]["max_bandwidth_kib"], 512, "{first}");
+    assert_eq!(j["limits"]["max_peers"], 3, "{first}");
+    assert_eq!(j["sets"][0]["readers"], 2, "{first}");
+    // fetch: a revoked pinned peer is refused before any connection (the address is unroutable)
+    let (code, _, stderr) = run(&["volumes", "fetch", "--set", &set_id, "--from", "127.0.0.1:1", "--peer-id", &fps[0], "--revoke", &s(&revoke_s), "--out", &s(&dir.join("nothing"))]);
+    assert_eq!(code, 3, "{stderr}");
+    assert!(stderr.contains("is revoked by") && stderr.contains("revoked-s.txt"), "{stderr}");
+    let (code, _, stderr) = run(&["volumes", "fetch", "--set", &set_id, "--from", "127.0.0.1:1", "--revoke", &s(&revoke_s), "--out", &s(&dir.join("nothing"))]);
+    assert_eq!(code, 7, "{stderr}");
+    assert!(stderr.contains("--revoke needs --peer-id"), "{stderr}");
+    assert!(!dir.join("nothing").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}

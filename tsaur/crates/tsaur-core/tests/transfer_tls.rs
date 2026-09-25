@@ -79,7 +79,7 @@ fn opts(l: &Lab, peer: &str, out: &Path, tls: Option<ClientTls>) -> FetchOptions
 }
 
 fn pinned(identity: Option<&Identity>, peer: &Identity) -> Option<ClientTls> {
-    Some(ClientTls { identity: identity.cloned(), peer_ids: vec![peer.fingerprint] })
+    Some(ClientTls { identity: identity.cloned(), peer_ids: vec![peer.fingerprint], ..Default::default() })
 }
 
 fn assert_join(l: &Lab, inputs: &[PathBuf], out: &Path) {
