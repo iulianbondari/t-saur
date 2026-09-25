@@ -314,6 +314,37 @@ fn parallel_packing_is_deterministic() {
     let (code, _, stderr) = run(&["pack", &s(&b), &s(&dir.join("src")), "--jobs", "8", "--block-kib", "64"]);
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(std::fs::read(&a).unwrap(), std::fs::read(&b).unwrap());
+    // the same with the codec decided on a sample (default 1 MiB blocks: the fixture's block of
+    // about 360 KiB is above the 128 KiB full-trial threshold)
+    let a3 = dir.join("j1-e3.tsr");
+    let b3 = dir.join("j8-e3.tsr");
+    let (code, stdout, stderr) = run(&["pack", &s(&a3), &s(&dir.join("src")), "--jobs", "1", "--effort", "3", "--json"]);
+    assert_eq!(code, 0, "{stderr}");
+    let report: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert!(report["blocks_sampled"].as_u64().unwrap() > 0, "{report}");
+    let (code, _, stderr) = run(&["pack", &s(&b3), &s(&dir.join("src")), "--jobs", "8", "--effort", "3"]);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(std::fs::read(&a3).unwrap(), std::fs::read(&b3).unwrap(), "--effort 3 must be independent of --jobs");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn effort_out_of_range_is_a_usage_error() {
+    let dir = fixture("effort");
+    for bad in ["0", "6", "x"] {
+        let (code, _, stderr) = run(&["pack", &s(&dir.join("bad.tsr")), &s(&dir.join("src")), "--effort", bad]);
+        assert_ne!(code, 0, "--effort {bad} must be refused");
+        assert!(stderr.contains("--effort"), "the message names the option: {stderr}");
+        assert!(bad == "x" || stderr.contains("1..=5"), "the message names the range: {stderr}");
+        assert!(!dir.join("bad.tsr").exists(), "nothing is written on a usage error");
+    }
+    // the default effort reports no sampled block and prints no effort line
+    let (code, stdout, stderr) = run(&["pack", &s(&dir.join("d.tsr")), &s(&dir.join("src"))]);
+    assert_eq!(code, 0, "{stderr}");
+    assert!(!stdout.contains("effort"), "{stdout}");
+    let (code, stdout, _) = run(&["pack", &s(&dir.join("e.tsr")), &s(&dir.join("src")), "--effort", "3"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("effort 3: codec decided on a sample for"), "{stdout}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

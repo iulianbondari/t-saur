@@ -737,6 +737,277 @@ mod tests {
         }
     }
 
+    /// Deterministic pseudo-random words.
+    fn xorshift(x: &mut u32) -> u32 {
+        *x ^= *x << 13;
+        *x ^= *x >> 17;
+        *x ^= *x << 5;
+        *x
+    }
+
+    /// Prose-like text of about `len` bytes from a word list.
+    fn prose(len: usize, seed: u32) -> Vec<u8> {
+        let words = [
+            "archive",
+            "agent",
+            "chunk",
+            "merkle",
+            "verify",
+            "content",
+            "reference",
+            "dictionary",
+            "solid",
+            "the",
+            "of",
+            "a",
+            "block",
+            "sample",
+            "codec",
+            "deterministic",
+            "every",
+            "byte",
+            "restored",
+            "and",
+        ];
+        let mut x = seed;
+        let mut out = Vec::with_capacity(len + 16);
+        let mut i = 0usize;
+        while out.len() < len {
+            out.extend_from_slice(words[(xorshift(&mut x) % words.len() as u32) as usize].as_bytes());
+            out.push(if i % 11 == 10 { b'\n' } else { b' ' });
+            i += 1;
+        }
+        out.truncate(len);
+        out
+    }
+
+    /// Random bytes of `len` bytes.
+    fn random(len: usize, seed: u32) -> Vec<u8> {
+        let mut x = seed;
+        (0..len).map(|_| (xorshift(&mut x) >> 24) as u8).collect()
+    }
+
+    fn best(effort: u8) -> CodecOptions {
+        CodecOptions { choice: CodecChoice::Best, effort, ..Default::default() }
+    }
+
+    fn assert_decodes(e: &Encoded, data: &[u8]) {
+        assert_eq!(decompress_with(e.codec, &e.bytes, data.len(), None, &e.params, e.filter).unwrap(), data);
+    }
+
+    fn same(a: &Encoded, b: &Encoded) -> bool {
+        a.codec == b.codec && a.filter == b.filter && a.params == b.params && a.bytes == b.bytes
+    }
+
+    #[test]
+    fn sample_is_deterministic_aligned_and_covers_the_block() {
+        for len in [100usize << 10, 129 << 10, 1 << 20, 4 << 20, 10 << 20] {
+            let n = (len / (128 << 10)).clamp(8, 32);
+            assert_eq!(sample_slices(len), n, "len {len}");
+            let d = random(len, 7);
+            let s = sample(&d);
+            assert_eq!(s, sample(&d), "the sample is a pure function of the block");
+            let offsets = sample_offsets(len);
+            if len <= 2 * n * SAMPLE_SLICE {
+                assert!(offsets.is_empty() && matches!(s, std::borrow::Cow::Borrowed(_)), "len {len}: small blocks are not sampled");
+                assert_eq!(&*s, &d[..]);
+                continue;
+            }
+            assert_eq!(offsets.len(), n);
+            assert_eq!(offsets[0], 0, "the first slice starts at 0");
+            assert!(offsets.iter().all(|o| o % 4 == 0), "{offsets:?}");
+            assert!(offsets.windows(2).all(|w| w[0] + SAMPLE_SLICE <= w[1]), "slices do not overlap: {offsets:?}");
+            let last = *offsets.last().unwrap();
+            assert!(last + SAMPLE_SLICE <= len && last + SAMPLE_SLICE + 3 >= len, "the last slice ends at the block (up to alignment): {last} of {len}");
+            assert_eq!(s.len(), n * SAMPLE_SLICE);
+            for (i, o) in offsets.iter().enumerate() {
+                assert_eq!(&s[i * SAMPLE_SLICE..(i + 1) * SAMPLE_SLICE], &d[*o..*o + SAMPLE_SLICE]);
+            }
+        }
+        assert_eq!(sample_full_trial_max(1 << 20), 128 << 10);
+        assert!(sample(&[]).is_empty() && sample_offsets(0).is_empty() && sample_offsets(SAMPLE_SLICE).is_empty());
+    }
+
+    #[test]
+    fn effort_5_and_small_blocks_take_the_unchanged_path() {
+        assert_eq!(CodecOptions::default().effort, 5);
+        assert_eq!(EFFORT_DEFAULT, 5);
+        // a 100 KiB mixed block: prose, then random bytes
+        let mut block = prose(60 << 10, 11);
+        block.extend_from_slice(&random(40 << 10, 12));
+        for effort in 1..=5 {
+            assert!(!samples_block(block.len(), &best(effort)), "effort {effort}");
+        }
+        let full = compress_best(&block, &best(5)).unwrap();
+        assert_ne!(full.codec, STORE);
+        for effort in 2..=5 {
+            let e = compress_best(&block, &best(effort)).unwrap();
+            assert!(same(&e, &full), "effort {effort} must be the full trial on a block of {} bytes", block.len());
+            assert_decodes(&e, &block);
+        }
+        // effort 1 is `CodecChoice::Zstd` at every size
+        let e1 = compress_best(&block, &best(1)).unwrap();
+        let z = compress_best(&block, &CodecOptions { choice: CodecChoice::Zstd, ..Default::default() }).unwrap();
+        assert!(same(&e1, &z) && e1.codec == ZSTD);
+        // out-of-range values are clamped, never sampled below the threshold
+        assert!(same(&compress_best(&block, &best(0)).unwrap(), &e1));
+        assert!(same(&compress_best(&block, &best(9)).unwrap(), &full));
+        // other choices ignore the effort
+        for choice in [CodecChoice::Zstd, CodecChoice::Xz, CodecChoice::Ppmd] {
+            let big = prose(300 << 10, 13);
+            let a = compress_best(&big, &CodecOptions { choice, effort: 3, ..Default::default() }).unwrap();
+            let b = compress_best(&big, &CodecOptions { choice, effort: 5, ..Default::default() }).unwrap();
+            assert!(same(&a, &b), "{choice:?}");
+            assert!(!samples_block(big.len(), &CodecOptions { choice, effort: 3, ..Default::default() }));
+        }
+    }
+
+    #[test]
+    fn decision_tie_break_matches_consider() {
+        // consider() keeps an output only when strictly smaller: on equal sizes the first tried wins,
+        // unfiltered before filtered and zstd, zstd+dict, xz, PPMd within a filter
+        let order: Vec<Candidate> =
+            [(FILTER_NONE, ZSTD), (FILTER_NONE, ZSTD_DICT), (FILTER_NONE, XZ), (FILTER_NONE, PPMD), (FILTER_X86, ZSTD), (FILTER_X86, ZSTD_DICT), (FILTER_X86, XZ), (FILTER_X86, PPMD)]
+                .iter()
+                .map(|&(f, c)| (f, c, 100))
+                .collect();
+        assert_eq!(pick(&order), Some((FILTER_NONE, ZSTD, 100)));
+        for start in 1..order.len() {
+            assert_eq!(pick(&order[start..]), Some(order[start]), "the first candidate in push order wins a tie");
+        }
+        let mut reversed = order.clone();
+        reversed.reverse();
+        assert_eq!(pick(&reversed), Some((FILTER_X86, PPMD, 100)), "pick follows the order it is given, not the codec id");
+        // a strictly smaller later candidate wins; an equal later one does not
+        let mut c = order.clone();
+        c[6].2 = 99;
+        assert_eq!(pick(&c), Some((FILTER_X86, XZ, 99)));
+        c[7].2 = 99;
+        assert_eq!(pick(&c), Some((FILTER_X86, XZ, 99)));
+        c[3].2 = 99;
+        assert_eq!(pick(&c), Some((FILTER_NONE, PPMD, 99)));
+        assert_eq!(pick(&[]), None);
+    }
+
+    #[test]
+    fn sampled_choice_agrees_with_the_full_trial_on_fixtures() {
+        let len = 1 << 20;
+        // 1. prose from a word list
+        let prose_block = prose(len, 21);
+        // 2. a template repeated with edits (long-range redundancy a sample cannot see whole)
+        let template = prose(40 << 10, 22);
+        let mut versions = Vec::with_capacity(len + template.len());
+        let mut x = 23u32;
+        while versions.len() < len {
+            let mut v = template.clone();
+            for _ in 0..40 {
+                let at = (xorshift(&mut x) as usize) % (v.len() - 8);
+                v[at..at + 8].copy_from_slice(b"EDITED! ");
+            }
+            versions.extend_from_slice(&v);
+        }
+        versions.truncate(len);
+        // 3. random bytes (a compressible tail would let zstd keep the block: consider() keeps any
+        //    output smaller than the block, the 97 % rule only skips the slower codecs)
+        let noisy = random(len, 24);
+        for (name, block) in [("prose", &prose_block), ("versions", &versions), ("random", &noisy)] {
+            assert!(samples_block(block.len(), &best(3)), "{name}");
+            let full = compress_best(block, &best(5)).unwrap();
+            let e3 = compress_best(block, &best(3)).unwrap();
+            let e4 = compress_best(block, &best(4)).unwrap();
+            for e in [&full, &e3, &e4] {
+                assert_decodes(e, block);
+            }
+            let d = decide_on_sample(&sample(block), &best(3)).unwrap();
+            println!(
+                "{name}: full {} {} B, effort 3 {} {} B, effort 4 {} {} B, decision {d:?}",
+                super::name(full.codec),
+                full.bytes.len(),
+                super::name(e3.codec),
+                e3.bytes.len(),
+                super::name(e4.codec),
+                e4.bytes.len()
+            );
+            match name {
+                "prose" => {
+                    assert_eq!(e3.codec, full.codec, "the sample must pick the full trial's codec on prose");
+                    assert!(same(&e3, &full), "the winner run on the whole block gives the full trial's bytes");
+                    assert!(same(&e4, &full));
+                    assert!(!d.incompressible && d.filter == FILTER_NONE);
+                }
+                "versions" => {
+                    // the known PPMd/xz ambiguity of a sample: effort 4 runs xz as well when PPMd
+                    // won the sample and therefore lands on the full trial's size here
+                    assert_eq!(e4.bytes.len(), full.bytes.len(), "effort 4's xz safety net");
+                    assert!(matches!(e3.codec, XZ | PPMD) && matches!(full.codec, XZ | PPMD));
+                }
+                _ => {
+                    assert_eq!(full.codec, STORE, "the full trial stores a block zstd cannot shrink at all");
+                    assert!(same(&e3, &full) && same(&e4, &full));
+                    assert!(d.incompressible && d.codec == ZSTD && d.also.is_none(), "the sample takes the incompressible shortcut: {d:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn effort_2_never_picks_ppmd_and_effort_1_is_zstd_only() {
+        let block = prose(1 << 20, 31);
+        assert!(looks_like_text(&block));
+        let e2 = compress_best(&block, &best(2)).unwrap();
+        assert!(matches!(e2.codec, ZSTD | XZ), "effort 2 is LZ-only, got {}", name(e2.codec));
+        let d2 = decide_on_sample(&sample(&block), &best(2)).unwrap();
+        assert_ne!(d2.codec, PPMD);
+        assert!(d2.also.is_none());
+        let d3 = decide_on_sample(&sample(&block), &best(3)).unwrap();
+        assert_eq!(d3.codec, PPMD, "PPMd wins prose");
+        assert!(d3.also.is_none(), "only effort 4 adds the xz check");
+        assert_eq!(decide_on_sample(&sample(&block), &best(4)).unwrap().also, Some(XZ));
+        let e1 = compress_best(&block, &best(1)).unwrap();
+        let z = compress_best(&block, &CodecOptions { choice: CodecChoice::Zstd, ..Default::default() }).unwrap();
+        assert_eq!(e1.codec, ZSTD);
+        assert!(same(&e1, &z), "effort 1 is `--codec zstd`");
+        assert!(!samples_block(block.len(), &best(1)) && !samples_block(block.len(), &best(5)));
+        assert!(samples_block(block.len(), &best(2)) && samples_block(block.len(), &best(4)));
+        for e in [&e1, &e2] {
+            assert_decodes(e, &block);
+        }
+        assert!(compress_best(&block, &best(3)).unwrap().bytes.len() <= e1.bytes.len());
+    }
+
+    #[test]
+    fn arm64_alignment_survives_sampling() {
+        // synthetic ARM64 code: three quarters of the words from a small instruction set, one
+        // quarter BL calls to one of eight fixed targets (their PC-relative immediates differ at
+        // every call site; the branch converter makes them identical), shifted by 3 bytes as a
+        // block that starts mid-instruction does
+        let words = 48 << 10; // 192 KiB > the full-trial threshold
+        let mut x = 41u32;
+        let set: Vec<u32> = (0..64).map(|_| (xorshift(&mut x) & !0xFC00_0000) | 0x8800_0000).collect();
+        let targets: Vec<u32> = (0..8).map(|i| 0x1000 + i * 0x340).collect();
+        let mut code = vec![0xAAu8; 3];
+        for i in 0..words {
+            let pc = 4 * i as u32;
+            let w = if i % 4 == 3 { 0x9400_0000 | (targets[(xorshift(&mut x) % 8) as usize].wrapping_sub(pc) >> 2) & 0x03FF_FFFF } else { set[(xorshift(&mut x) % 64) as usize] };
+            code.extend_from_slice(&w.to_le_bytes());
+        }
+        assert_eq!(arm64_alignment(&code), Some(3));
+        let s = sample(&code);
+        assert!(matches!(s, std::borrow::Cow::Owned(_)));
+        assert_eq!(arm64_alignment(&s), Some(3), "4-byte aligned slices keep the block's word alignment");
+        let d = decide_on_sample(&s, &best(3)).unwrap();
+        assert_eq!((filter_id(d.filter), filter_param(d.filter)), (FILTER_ARM64, 3), "{d:?}");
+        let e3 = compress_best(&code, &best(3)).unwrap();
+        assert_eq!((filter_id(e3.filter), filter_param(e3.filter)), (FILTER_ARM64, 3));
+        assert_decodes(&e3, &code);
+        let full = compress_best(&code, &best(5)).unwrap();
+        assert!(same(&e3, &full), "the sampled decision agrees with the full trial on this block");
+        // effort 1 keeps trying the filter on machine code
+        let e1 = compress_best(&code, &best(1)).unwrap();
+        assert_eq!((e1.codec, filter_id(e1.filter)), (ZSTD, FILTER_ARM64));
+        assert_decodes(&e1, &code);
+    }
+
     #[test]
     fn ppmd_roundtrip() {
         let mut text = String::new();

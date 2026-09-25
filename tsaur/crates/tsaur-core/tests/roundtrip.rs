@@ -155,6 +155,62 @@ fn deterministic_output() {
 }
 
 #[test]
+fn every_effort_roundtrips_and_is_deterministic() {
+    let mut fx = fixture("effort");
+    // a 1.2 MiB prose file, so that at least one block exceeds the 128 KiB full-trial threshold
+    // and is decided on a sample at efforts 2..4
+    let words = ["archive", "agent", "chunk", "merkle", "verify", "content", "reference", "dictionary", "solid", "the", "of", "a"];
+    let mut seed = 0x5eed_0000_0000_0001u64;
+    let mut big = String::new();
+    while big.len() < 1_200_000 {
+        big.push_str(words[(xorshift(&mut seed) % words.len() as u64) as usize]);
+        big.push(if xorshift(&mut seed).is_multiple_of(12) { '\n' } else { ' ' });
+    }
+    let big_path = fx.dir.join("big.txt");
+    std::fs::write(&big_path, &big).unwrap();
+    fx.files.push(big_path);
+    // archives and extractions live next to the inputs, not inside them: the inputs must be the
+    // same for every pack
+    let work = PathBuf::from(format!("{}-work", fx.dir.display()));
+    std::fs::create_dir_all(&work).unwrap();
+    let mut sizes = std::collections::BTreeMap::new();
+    let mut bytes5 = Vec::new();
+    for effort in 1..=5u8 {
+        let opts = PackOptions { effort, ..Default::default() };
+        let a = work.join(format!("e{effort}-a.tsr"));
+        let b = work.join(format!("e{effort}-b.tsr"));
+        let ra = pack(std::slice::from_ref(&fx.dir), &a, opts.clone()).unwrap();
+        let rb = pack(std::slice::from_ref(&fx.dir), &b, opts).unwrap();
+        let bytes = std::fs::read(&a).unwrap();
+        assert_eq!(bytes, std::fs::read(&b).unwrap(), "effort {effort}: same inputs + options must give identical bytes");
+        assert_eq!(ra.blocks_sampled, rb.blocks_sampled);
+        if matches!(effort, 1 | 5) {
+            assert_eq!(ra.blocks_sampled, 0, "effort {effort} never samples");
+        } else {
+            assert!(ra.blocks_sampled > 0, "effort {effort}: the 1.2 MiB file must give at least one sampled block ({:?})", ra.codec_hist);
+        }
+        let mut r = Reader::open(&a, None).unwrap();
+        assert!(r.verify(None).unwrap().entries_bad.is_empty());
+        let ex = work.join(format!("out-e{effort}"));
+        r.extract(&ex, None, false).unwrap();
+        assert_extracted_equal(&fx, &ex);
+        sizes.insert(effort, ra.archive_bytes);
+        if effort == 5 {
+            bytes5 = bytes;
+        }
+    }
+    // the default is effort 5 and the effort is not archive content: nothing but the codec choice differs
+    let d = work.join("default.tsr");
+    let rd = pack(std::slice::from_ref(&fx.dir), &d, PackOptions::default()).unwrap();
+    assert_eq!(std::fs::read(&d).unwrap(), bytes5, "PackOptions::default() must be effort 5");
+    assert_eq!(rd.blocks_sampled, 0);
+    assert!(sizes[&3] <= sizes[&1], "effort 3 must not lose to zstd only: {sizes:?}");
+    println!("archive bytes per effort: {sizes:?}");
+    let _ = std::fs::remove_dir_all(&fx.dir);
+    let _ = std::fs::remove_dir_all(&work);
+}
+
+#[test]
 fn corruption_is_detected() {
     let fx = fixture("corrupt");
     let out = fx.dir.join("c.tsr");
