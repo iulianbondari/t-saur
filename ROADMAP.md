@@ -10,6 +10,50 @@
 - [x] LGPL reading for the full binary: the maintainer decided (2026-09-25) not to seek legal confirmation; the policy stands as written (`docs/DISTRIBUTION-POLICY.md` §3.4: lite is the recommended download, the full build is distributed with its notices and its sources, and anyone who needs certainty obtains their own advice); removing the dependence on the LGPL component is on the roadmap below
 - [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)
 
+## Next cycle: 1.0.0 → 1.x → 2.0 (maintainer's direction, 2026-09-25)
+
+Order of work: what closes 1.0.0 first; then everything that needs **no format change** (format
+v1 stays frozen, old readers keep working or refuse with a clear message); then the format
+changes, collected into one v2 bump instead of many small ones. Every step is its own pull
+request with measurements, and nothing below weakens a guarantee of `docs/V1-CONTRACT.md`.
+
+### Step 0 — close 1.0.0 (procedure: `docs/RELEASE-PROCESS.md`)
+- [ ] publish the repository: history rewritten once while private (rehearsed 2026-09-25: tip tree identical, 33 commits, no trace of the removed paths), visibility changed, ruleset applied, social preview uploaded
+- [ ] independent review by an outside evaluator (`docs/review/REVIEW-PACKAGE.md`); a public repository is what makes it possible
+- [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)
+- [ ] release 1.0.0 from the tag: draft release workflow, packages checked, CHANGELOG
+
+### 1.1 — faster at maximum ratio, executables, supply-chain hygiene (no format change)
+- [ ] **speed of `--codec best`**: choose the codec on a 64 KiB sample of each block (zstd -19 / xz 9e / PPMd), run only the winner on the whole block; keep the incompressible-block shortcut; add `--effort 1..5` (1 = zstd only, 5 = today's full trial); target ≤ 2× the `--codec zstd` time at ≤ 0.5 point of ratio, measured on the four corpora
+- [ ] **section-aware executable filtering, phase A**: parse PE/ELF/Mach-O headers and apply the existing x86/ARM64 converters only to blocks that lie in code sections (data, resources and relocations untouched); no new filter id, so v1 readers are unaffected; measure against 7-Zip on the two machine-code corpora
+- [ ] **network limits**: a revocation file for pinned identities (`--revoke FILE`, checked before the handshake), a global bandwidth cap and a cap on distinct client addresses for `serve`, per-set `--allow` lists; all documented in `docs/design/VOLUME-TRUST.md`
+- [ ] **supply chain**: `cargo audit` and `cargo deny` in CI (free), `cargo-fuzz` targets on nightly for the reader, the container parsers and the canonical converters, SBOM and SLSA provenance attestation attached to every release, reproducible package builds
+- [ ] **release gate on macOS** once, so that macOS moves from "covered by CI" to "verified" in the contract
+
+### 1.2 — links, updates without rewriting, first bindings (additive, gated by `requires`)
+- [ ] **symbolic links**: stored as entries with `mode: link` and a `requires: links` marker, so 1.0 readers refuse the archive with a clear message instead of misreading it; packing needs `--links` (default stays skip), unpacking never creates a link that points outside the destination, on Windows falls back to a copy when link creation is not permitted; hard links recorded the same way
+- [ ] **update without rewriting in place**: the maintainer's question "what is safest" is answered by *never* mutating a `.tsr` in place (that would break section hashes, signatures, determinism and verify-before-rename); instead `tsaur update old.tsr --add … --remove … -o new.tsr` reuses the old blobs byte for byte without recompressing, writes the new archive next to the old one and replaces it atomically; incremental archives by reference (`pack --ref`) remain the tool for versions
+- [ ] **Python bindings** (`tsaur-py`, PyO3, wheels for the three systems) exposing pack, unpack, list, read, verify and the MCP tools; **C ABI** (`tsaur-ffi`) as the base for other languages
+- [ ] exact token counts with a local tokenizer instead of the chars/3.5 estimate; `TSAUR.md` manifest projection
+
+### 1.3 — one build instead of two, discovery on the local network
+- [ ] **JPEG recompression without LGPL**: evaluate permissively licensed lossless JPEG recompressors (JPEG XL's JPEG transcoding in libjxl, BSD-3; brunsli, Apache-2.0; a clean-room Rust coder for the Lepton model) on the JPEG corpus for ratio, bit-exact rebuild, determinism and speed; adopt one behind a `requires` marker so that the full/lite split disappears and every archive opens in every build
+- [ ] **peer discovery, opt-in and never a bypass of pinning**: LAN first (mDNS/DNS-SD `_tsaur._tcp` announcing set id and fingerprint, `serve --announce`, `fetch --discover`), then NAT traversal and relays through iroh as an optional transport, public DHT last and only as a separate opt-in; addresses found by discovery are still pinned by fingerprint before any byte is accepted
+- [ ] **Node bindings** (napi-rs) and a GitHub Action that packs build artifacts as `.tsr` with verification
+
+### 2.0 — format v2 (one bump; v2 readers read v1)
+- [ ] BCJ2-class split streams for executables (the remaining 1–3 points to 7-Zip), section-aware phase B
+- [ ] LZMA-based delta with preset dictionaries; float-split codec for tensors; context-mixing tier for small critical texts
+- [ ] composite ML-DSA-65 + Ed25519 signatures, FIDO2 stanza
+- [ ] in-archive embeddings and summaries with declared model hash; richer converters (PPTX/XLSX, PDF tables)
+- [ ] the format changes that 1.x kept behind `requires` markers become native in v2; spec 2.0, golden archives for v2, `compat_check` across v1/v2 readers
+
+### Ecosystem and adoption (continuous, starts with the public release)
+- [ ] packages: crates.io (`tsaur-core`, `tsaur`), PyPI, npm, Homebrew, winget, Scoop; reproducible builds
+- [ ] integrations: file-manager extension on Windows, Quick Look on macOS, VS Code extension, agent platforms (Skills, Files APIs)
+- [ ] conformance suite and codec registry for other implementations; spec published under CC-BY-4.0
+- adoption and trust are earned in public: releases, CVE handling per `SECURITY.md`, external reviews; no shortcut is planned
+
 ## Phase 0 — Research and decisions (done)
 - [x] Research on 7 areas (classic archivers, AI compression and formats, P2P and content addressing, encryption, naming, compression theory, agent protocols); the notes are the maintainer's working material, the conclusions are in the design documents
 - [x] Test corpus + reproducible local benchmark (7-Zip 26.03 and WinRAR 7.23 included) → `benchmarks/`
