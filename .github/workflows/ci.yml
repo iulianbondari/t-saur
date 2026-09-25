@@ -6,7 +6,37 @@ name: ci
 on:
   push:
     branches: [main]
+    # documentation-only changes do not need three operating systems (the list is repeated
+    # below: YAML anchors are not relied on in workflow files)
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "CITATION.cff"
+      - "LICENSE-*"
+      - "licenses/**"
+      - ".github/rulesets/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".gitignore"
+      - ".gitattributes"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "CITATION.cff"
+      - "LICENSE-*"
+      - "licenses/**"
+      - ".github/rulesets/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".gitignore"
+      - ".gitattributes"
+
+# A new push to the same pull request cancels the run that is still going for the older commit;
+# pushes to main are never cancelled (each one is a record).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -23,7 +53,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: tsaur
+          # both target directories: the lite build (no default features) has its own
+          workspaces: |
+            tsaur -> target
+            tsaur -> target-nolepton
       - name: Build
         run: cargo build --release --workspace
         working-directory: tsaur
