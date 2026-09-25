@@ -5,7 +5,6 @@ type: software
 authors:
   - family-names: Bondari
     given-names: Iulian
-    orcid: "https://orcid.org/0009-0000-1616-2088"
 repository-code: "https://github.com/iulianbondari/t-saur"
 license: "Apache-2.0 OR MIT"
 version: 1.0.0-rc.1
