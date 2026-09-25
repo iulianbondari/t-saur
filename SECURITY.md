@@ -7,8 +7,9 @@ came from somewhere else. The reader is therefore written as a parser of hostile
 
 Please use **GitHub private vulnerability reporting** on the repository
 (https://github.com/iulianbondari/t-saur/security/advisories/new, the `Security` tab →
-`Report a vulnerability`). Do not open a public issue for anything that could be exploited before
-a fix ships.
+`Report a vulnerability`). If you cannot use it, write to contact@iulianbondari.com with
+"T-saur security" in the subject. Do not open a public issue for anything that could be exploited
+before a fix ships.
 
 We aim to acknowledge reports within 7 days and to publish a fix, a CVE where warranted and a
 changelog entry within 90 days. Reporters are credited unless they prefer not to be.

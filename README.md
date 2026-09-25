@@ -17,8 +17,10 @@ peer-to-peer distribution in verifiable pieces (BLAKE3 Merkle trees, erasure cod
 the built-in Model Context Protocol server.
 
 The project is free and open source (Apache-2.0 OR MIT, at your option); nothing in it depends on an account, a
-service or a network. It is written and maintained by Iulian Bondari with substantial AI assistance, which is stated
-plainly in `AUTHORS.md` and `docs/PROVENANCE.md`. Former working name: *AIX*, replaced because of IBM's AIX® trademark.
+service or a network. It is written and maintained by Iulian Bondari, who holds its copyright, with substantial AI
+assistance, which is stated plainly in `AUTHORS.md` and `docs/PROVENANCE.md`. Former working name: *AIX*, replaced
+because of IBM's AIX® trademark. Collaboration and questions: contact@iulianbondari.com (security reports: see
+`SECURITY.md`).
 
 Start here: `docs/INSTALL.md` (packages, building from source), `docs/GUIDE.md` (first archive, volumes, transfers),
 `docs/V1-CONTRACT.md` (what v1.0 promises and how it is checked), `SECURITY.md` (what the reader guarantees, how to

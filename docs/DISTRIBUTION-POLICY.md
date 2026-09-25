@@ -58,11 +58,13 @@ build or with `pack --no-container`.
    linked library: prominent notice (`THIRD-PARTY-NOTICES.md`), the license texts, and the
    Corresponding Application Code in a form that permits relinking, which the complete
    Apache/MIT source with `Cargo.lock` provides (`cargo vendor` reproduces the exact `cabac`
-   sources). **This reading has not been confirmed by counsel.** It is the material uncertainty of
-   this policy: no test can settle it, which is why the lite build is the recommended download and
-   the full build is an explicit choice with its notices attached. A distributor of the full
-   binary who wants certainty should obtain legal advice; until then the project does not claim
-   that the question is closed.
+   sources). **This reading has not been confirmed by counsel, and the maintainer decided on
+   2026-09-25 not to seek that confirmation.** It remains the material uncertainty of this policy:
+   no test can settle it, which is why the lite build is the recommended download and the full
+   build is an explicit choice with its notices attached. A distributor of the full binary who
+   wants certainty should obtain their own legal advice; the project does not claim that the
+   question is closed, and replacing the LGPL component with a permissively licensed JPEG
+   recompressor is on the roadmap so that the question disappears.
 5. **Packages are built and checked by `tools/package.py`**: each zip is unpacked in a clean
    directory and the packaged binary runs every command of `docs/GUIDE.md`; sizes and SHA-256
    values are written to `dist/SHA256SUMS` and `dist/PACKAGES.md`. Nothing is uploaded by the

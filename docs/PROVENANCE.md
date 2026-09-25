@@ -62,11 +62,14 @@ format to that state independently of any git metadata.
 
 ## What remains open
 
-* **Copyright holder.** The code and documentation were produced with substantial AI assistance
-  under the maintainer's direction (`AUTHORS.md`). Whether, and where, such material carries
-  copyright, and who holds it, is not settled; the license files therefore name "the T-saur
-  contributors" instead of a person until the maintainer settles the question, if necessary with
-  legal advice. The license grant (Apache-2.0 OR MIT) is the maintainer's intent in every case.
+* **Copyright holder: settled by the maintainer (2026-09-25).** Iulian Bondari conceived and
+  directed the project and holds the copyright in the work as published; the license files name
+  him, and the grant is Apache-2.0 OR MIT for everyone. The fact that the code and documentation
+  were produced with substantial AI assistance under his direction stays recorded in
+  `AUTHORS.md` as provenance, because the treatment of AI-assisted material differs between
+  jurisdictions; the maintainer has chosen not to seek legal advice on it, and the record lets
+  anyone apply the rules of their own jurisdiction. Contributors keep the copyright in their
+  contributions (`CONTRIBUTING.md`).
 * **Trademark.** The maintainer has decided not to reserve names or to file or search for a
   trademark: T-saur is used only as the name of a free software project. Anyone who needs a
   legal clearance of the name has to obtain it themselves.
