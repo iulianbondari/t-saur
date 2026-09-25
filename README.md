@@ -48,7 +48,7 @@ otherwise its content, file names and hashes are readable by anyone who holds th
 ├── README.md, ROADMAP.md, CHANGELOG.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, AUTHORS.md, CITATION.cff
 ├── LICENSE-APACHE, LICENSE-MIT, THIRD-PARTY-NOTICES.md, licenses/ (LGPL/GPL texts for the optional Lepton component)
 ├── docs/
-│   ├── INSTALL.md, GUIDE.md, V1-CONTRACT.md, DISTRIBUTION-POLICY.md, PROVENANCE.md
+│   ├── INSTALL.md, GUIDE.md, V1-CONTRACT.md, DISTRIBUTION-POLICY.md, PROVENANCE.md, RELEASE-PROCESS.md
 │   ├── DESIGN-AGENT-FIRST.md          what an AI agent needs from an archiver + how we build it (requirements R1–R24, API, Rust architecture, open checks, milestones)
 │   ├── spec/TSAUR-FORMAT-SPEC-v1.0.md   format specification (v1.0, frozen; implementation notes per section)
 │   ├── design/, review/               volume sets, trust contract, two-device plan; review package and the verification reports

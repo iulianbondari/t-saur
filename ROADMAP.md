@@ -17,8 +17,8 @@ v1 stays frozen, old readers keep working or refuse with a clear message); then 
 changes, collected into one v2 bump instead of many small ones. Every step is its own pull
 request with measurements, and nothing below weakens a guarantee of `docs/V1-CONTRACT.md`.
 
-### Step 0 — close 1.0.0
-- [ ] publish the repository (decision on the history in `docs/PROVENANCE.md`), apply the ruleset, upload the social preview
+### Step 0 — close 1.0.0 (procedure: `docs/RELEASE-PROCESS.md`)
+- [ ] publish the repository: history rewritten once while private (rehearsed 2026-09-25: tip tree identical, 33 commits, no trace of the removed paths), visibility changed, ruleset applied, social preview uploaded
 - [ ] independent review by an outside evaluator (`docs/review/REVIEW-PACKAGE.md`); a public repository is what makes it possible
 - [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)
 - [ ] release 1.0.0 from the tag: draft release workflow, packages checked, CHANGELOG
