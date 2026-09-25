@@ -12,7 +12,7 @@ history stays private, and what was checked before publication.
 | source archive of the tag | `tsaur-1.0.0-rc.1-src.zip`, SHA-256 `b5d25a6460921d8a5ef09175b37ac19c1daaa1b4918e52ff8cac355122eabf0c` (176 files), kept by the maintainer |
 | verification of the tag | `docs/review/RC1-VERIFICATION-REPORT.md` (all producer checks passed on Windows 11 x64) |
 | verification on a second operating system | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md` (all producer checks passed on Linux x64, commit `a8ef56e` of this repository, whose archive code is the imported snapshot plus lint-only changes) |
-| import commit | the first commit of this repository; its hash and the SHA-256 manifest of every imported file are in the import report the maintainer keeps with the source archive |
+| import commit | the first commit of this repository: `16eeeec879ecad3c271fb02dcb47aa76a69ea3dc` in the original history, `29bc6727bc3f476a03d7495c22df08af1001760c` after the rewrite of 2026-09-25 (below); its SHA-256 manifest of every imported file is in the import report the maintainer keeps with the source archive |
 
 Publication-preparation changes after the tag: community files (`CODE_OF_CONDUCT.md`,
 `AUTHORS.md`, `CITATION.cff`, `docs/INSTALL.md`, `docs/PROVENANCE.md`,
@@ -31,7 +31,35 @@ this repository's history** (the import commit and the commits up to that date),
 repository is made public the maintainer either rewrites the history to drop them (for example
 with `git filter-repo --path docs/research --path benchmarks/check_names.sh --invert-paths`,
 followed by a forced update of `main`, which is acceptable only while the repository is private)
-or re-creates the public repository from a clean snapshot; this page will record which.
+or re-creates the public repository from a clean snapshot. The first way was taken on 2026-09-25;
+the next section records it.
+
+## History rewritten before publication (2026-09-25)
+
+Executed once, while the repository was still private, as `docs/RELEASE-PROCESS.md` §A1
+describes, with the maintainer's explicit authorisation of the same day. Command, in a fresh
+clone with `git-filter-repo` 2.x:
+
+```
+git filter-repo --path docs/research --path benchmarks/check_names.sh --invert-paths --mailmap MAILMAP --force
+```
+
+| Item | Before | After |
+|---|---|---|
+| tip of `main` | `7fd480f6ac8a5a2b7aa29e18c4c35f67d9288e36` | `cce66e1c9cfa6368318633001ea1d4b84e958d06` |
+| tree of the tip | `a881d31adc428661ac98ead32fe9f74ddcfe4e44` | `a881d31adc428661ac98ead32fe9f74ddcfe4e44` (identical) |
+| import commit (root) | `16eeeec879ecad3c271fb02dcb47aa76a69ea3dc` | `29bc6727bc3f476a03d7495c22df08af1001760c` |
+| commits on `main` | 43 | 43 |
+| commits touching `docs/research/` or `benchmarks/check_names.sh` | 2 | 0 |
+| author/committer identities | 4 (two of them addresses the maintainer does not publish) | the maintainer's GitHub no-reply identity on every commit; `GitHub <noreply@github.com>` as committer of the web merges |
+| `Co-Authored-By` trailers (AI assistance) | 16 | 16 |
+
+The mailmap mapped the private address used by the maintainer's tooling, and the assistant's
+default git identity on six merge commits, to `Iulian Bondari
+<76534436+iulianbondari@users.noreply.github.com>`; AI assistance stays stated in `AUTHORS.md` and
+in the trailers. Pull requests #1 to #15 keep their pages on GitHub; the commits they list belong
+to the old history and are no longer reachable from `main`. The maintainer's private mirror keeps
+the old history. Nothing else about the content changed: the tree hash proves it.
 
 ## Why the history is not published
 
