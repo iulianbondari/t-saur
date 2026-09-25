@@ -1,0 +1,48 @@
+# Companion of ci.yml for changes that touch only the paths ci.yml ignores.
+#
+# The ruleset for `main` requires the checks `test (ubuntu-latest)`, `test (windows-latest)` and
+# `determinism` on every pull request, and GitHub blocks a merge while a required check is
+# missing. ci.yml does not run for documentation-only changes, so without this workflow such a
+# pull request could never be merged (GitHub's documented remedy: a second workflow with the same
+# job names that runs on the complementary path filter and succeeds). The jobs below build
+# nothing; they exist so that the required checks are reported on the commit. The `paths` list
+# must stay identical to the `paths-ignore` lists of ci.yml. A pull request that touches both
+# kinds of paths runs both workflows; both then report, and the real one decides.
+name: ci-docs
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "*.md"
+      - "benchmarks/**.md"
+      - "prototype/**.md"
+      - "tsaur/README.md"
+      - ".github/**.md"
+      - "CITATION.cff"
+      - "LICENSE-*"
+      - "licenses/**"
+      - ".github/rulesets/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".gitignore"
+      - ".gitattributes"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    # the job name carries the matrix value so that it matches the required check; the runner
+    # is Linux for both entries (nothing is built)
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "documentation-only change; the build and tests of ci.yml are not needed (${{ matrix.os }})"
+  determinism:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "documentation-only change; no archive was produced, nothing to compare"

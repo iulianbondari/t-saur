@@ -18,16 +18,16 @@ changes, collected into one v2 bump instead of many small ones. Every step is it
 request with measurements, and nothing below weakens a guarantee of `docs/V1-CONTRACT.md`.
 
 ### Step 0 — close 1.0.0 (procedure: `docs/RELEASE-PROCESS.md`)
-- [ ] publish the repository: history rewritten once while private (**done 2026-09-25**: tip tree identical, 43 commits, no trace of the removed paths, identities normalised; `docs/PROVENANCE.md`), visibility change, ruleset and social preview still to do
+- [x] publish the repository (**done 2026-09-25**): history rewritten once while private, then pushed as a new repository, public, with the ruleset, private vulnerability reporting and the social preview in place (`docs/PROVENANCE.md`, `docs/RELEASE-PROCESS.md` A1-A2)
 - [ ] independent review by an outside evaluator (`docs/review/REVIEW-PACKAGE.md`); a public repository is what makes it possible
 - [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)
 - [ ] release 1.0.0 from the tag: draft release workflow, packages checked, CHANGELOG
 
 ### 1.1 — faster at maximum ratio, executables, supply-chain hygiene (no format change)
-- [ ] **speed of `--codec best`**: choose the codec on a 64 KiB sample of each block (zstd -19 / xz 9e / PPMd), run only the winner on the whole block; keep the incompressible-block shortcut; add `--effort 1..5` (1 = zstd only, 5 = today's full trial); target ≤ 2× the `--codec zstd` time at ≤ 0.5 point of ratio, measured on the four corpora
+- [x] **speed of `--codec best`** (**done 2026-09-25**, `pack --effort 1..5`, default unchanged; measurements in `CHANGELOG.md`): choose the codec on a 64 KiB sample of each block (zstd -19 / xz 9e / PPMd), run only the winner on the whole block; keep the incompressible-block shortcut; add `--effort 1..5` (1 = zstd only, 5 = today's full trial); target ≤ 2× the `--codec zstd` time at ≤ 0.5 point of ratio, measured on the four corpora
 - [ ] **section-aware executable filtering, phase A**: parse PE/ELF/Mach-O headers and apply the existing x86/ARM64 converters only to blocks that lie in code sections (data, resources and relocations untouched); no new filter id, so v1 readers are unaffected; measure against 7-Zip on the two machine-code corpora
 - [ ] **network limits**: a revocation file for pinned identities (`--revoke FILE`, checked before the handshake), a global bandwidth cap and a cap on distinct client addresses for `serve`, per-set `--allow` lists; all documented in `docs/design/VOLUME-TRUST.md`
-- [ ] **supply chain**: `cargo audit` and `cargo deny` in CI (free), `cargo-fuzz` targets on nightly for the reader, the container parsers and the canonical converters, SBOM and SLSA provenance attestation attached to every release, reproducible package builds
+- [ ] **supply chain**: `cargo audit` and `cargo deny` in CI (**done 2026-09-25**: `.github/workflows/supply-chain.yml`, policy `tsaur/deny.toml`), `cargo-fuzz` targets on nightly for the reader, the container parsers and the canonical converters, SBOM and SLSA provenance attestation attached to every release, reproducible package builds
 - [ ] **release gate on macOS** once, so that macOS moves from "covered by CI" to "verified" in the contract
 - [ ] **`cabac` out of every build**: the LGPL-3.0 arithmetic coder reaches every binary through `preflate-rs` (every published version depends on it). Options, in order: ask upstream to relicense or to make the coder pluggable; a permissively licensed coder with the same behaviour behind a `[patch.crates-io]` fork of `preflate-rs` (bit-exact output on the golden archives is the acceptance test, since the deflate inversion must not change); as a last resort a `preflate` feature that drops container recompression (at the cost of the headline ratio). Until then every package carries the notices and the license texts
 
