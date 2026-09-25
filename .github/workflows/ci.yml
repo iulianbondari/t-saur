@@ -31,6 +31,8 @@ on:
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - ".gitignore"
       - ".gitattributes"
+  # run the full matrix on demand for any branch (Actions tab -> ci -> Run workflow)
+  workflow_dispatch:
 
 # A new push to the same pull request cancels the run that is still going for the older commit;
 # pushes to main are never cancelled (each one is a record).
@@ -46,12 +48,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # macOS minutes are billed at ten times the Linux rate, so pull requests run on Linux and
+        # Windows; every push to main and every manual run covers all three (the ruleset for main
+        # requires the Linux and Windows checks and the determinism comparison on pull requests)
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest", "windows-latest"]' || '["ubuntu-latest", "macos-latest", "windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      # third-party actions pinned to commit SHAs (the tag is in the comment)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch, 2026-09
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           # both target directories: the lite build (no default features) has its own
           workspaces: |
@@ -99,7 +107,7 @@ jobs:
           pathlib.Path('det-' + platform.system().lower() + '.sha256').write_text(f"{h}  {platform.system().lower()}\n")
           print(platform.system(), h)
           EOF
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: determinism-${{ matrix.os }}
           path: det-*.sha256
@@ -108,25 +116,27 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: determinism-*
           merge-multiple: true
       - name: Compare archive hashes across platforms
         run: |
-          # Each file holds "<sha256>  <platform>\n". Three files are required (one per matrix
-          # entry) and exactly one distinct hash; the earlier form (`cat | sort -u | wc -l` over
-          # files without a trailing newline) joined the hashes into one line and never compared.
+          # Each file holds "<sha256>  <platform>\n". One file per matrix entry is required (two
+          # on pull requests, three on pushes to main and manual runs) and exactly one distinct
+          # hash; the earlier form (`cat | sort -u | wc -l` over files without a trailing newline)
+          # joined the hashes into one line and never compared.
           python3 - <<'EOF'
-          import pathlib, sys
+          import os, pathlib, sys
+          expected = 2 if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request' else 3
           files = sorted(pathlib.Path('.').glob('det-*.sha256'))
           rows = [f.read_text().split() for f in files]
           for f, r in zip(files, rows):
               print(f.name, *r)
           hashes = {r[0] for r in rows}
-          if len(files) != 3 or any(len(r) != 2 or len(r[0]) != 64 for r in rows):
-              sys.exit(f"expected three well-formed hash files, got {len(files)}: {rows}")
+          if len(files) != expected or any(len(r) != 2 or len(r[0]) != 64 for r in rows):
+              sys.exit(f"expected {expected} well-formed hash files, got {len(files)}: {rows}")
           if len(hashes) != 1:
               sys.exit(f"the archive differs between platforms: {sorted(hashes)}")
-          print("identical on every platform")
+          print(f"identical on every platform of this run ({', '.join(r[1] for r in rows)})")
           EOF
