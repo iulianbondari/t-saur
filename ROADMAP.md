@@ -7,7 +7,7 @@
 - [x] user guide executed end to end before a release (`tools/check_guide.py`)
 - [x] test suite run on a second operating system: release gate executed on Linux x64 (`docs/review/RC1-VERIFICATION-REPORT-linux-x64.md`) plus a 300 s per target robustness campaign (`docs/review/ROBUSTNESS-CAMPAIGN-linux-x64.md`); CI matrix green on Linux, macOS and Windows (run 36099317045); the determinism fixture's hash compared by hand on 2026-09-25 from the job logs of run 36105324690, identical on the three runners and on the Linux verification machine (the job's own comparison was vacuous before pull request #8); the release gate itself has not been run on macOS
 - [ ] independent review by another evaluator (`docs/review/REVIEW-PACKAGE.md`)
-- [ ] legal confirmation of the LGPL reading for the full binary (`docs/DISTRIBUTION-POLICY.md` §3.4)
+- [x] LGPL reading for the full binary: the maintainer decided (2026-09-25) not to seek legal confirmation; the policy stands as written (`docs/DISTRIBUTION-POLICY.md` §3.4: lite is the recommended download, the full build is distributed with its notices and its sources, and anyone who needs certainty obtains their own advice); removing the dependence on the LGPL component is on the roadmap below
 - [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)
 
 ## Phase 0 — Research and decisions (done)

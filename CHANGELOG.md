@@ -11,7 +11,9 @@ Publication preparation after the tag (documents and tooling only): `CODE_OF_CON
 `benchmarks/CORPUS-LICENSES.md`, issue and pull-request templates, a draft-release workflow for
 the lite packages, neutral copyright lines in the license files, relative paths in tool output;
 on 2026-09-25 the research notes and the name-availability script, the maintainer's working
-material, were removed from the public tree (`docs/PROVENANCE.md`).
+material, were removed from the public tree (`docs/PROVENANCE.md`); the same day the maintainer
+settled the copyright holder (Iulian Bondari, license files updated) and published a contact
+address (`AUTHORS.md`).
 
 - **Format v1 frozen** (`docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` §12, `docs/V1-CONTRACT.md`): v1 readers
   accept exactly version 1 of `.tsr` and `.tsrv` and refuse any other version by name; the writer
