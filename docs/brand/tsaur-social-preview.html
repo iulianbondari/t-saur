@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#101820;width:1280px;height:640px;overflow:hidden}
+  .card{position:relative;width:1280px;height:640px;background:#101820;font-family:Inter,"Segoe UI",Arial,sans-serif;color:#f5e9c8}
+  .logo{position:absolute;left:88px;top:72px;width:480px;height:480px}
+  .text{position:absolute;left:584px;top:104px;width:660px}
+  .name{font-size:108px;font-weight:800;letter-spacing:4px;line-height:1;margin:0}
+  .ext{display:inline-block;margin-top:18px;padding:8px 20px;border:3px solid #4fb676;border-radius:14px;color:#a8dfb8;font-size:40px;font-weight:700;letter-spacing:2px;font-family:"JetBrains Mono",Consolas,monospace}
+  .tag{margin-top:30px;font-size:33px;line-height:1.35;color:#f5e9c8;opacity:.95}
+  .row{margin-top:30px;display:flex;gap:12px;flex-wrap:wrap;width:660px}
+  .pill{padding:7px 15px;border-radius:999px;background:#1a2a30;color:#a8dfb8;font-size:21px;font-weight:600;white-space:nowrap}
+  .foot{position:absolute;left:584px;top:540px;font-size:21px;color:#8fa79a;white-space:nowrap}
+  .bar{position:absolute;left:0;top:626px;width:1280px;height:14px;background:linear-gradient(90deg,#4fb676,#3f9d6b 60%,#b08a3e)}
+</style></head><body><div class="card">
+  <svg class="logo" viewBox="20 40 216 200" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- tail -->
+  <path d="M96 176 C 70 178, 44 166, 36 148 C 52 154, 74 158, 98 160 Z" fill="#3f9d6b"/>
+  <!-- body -->
+  <path d="M104 150 C 84 156, 78 180, 92 198 L 168 198 C 178 182, 174 160, 156 150 Z" fill="#4fb676"/>
+  <!-- lighter belly -->
+  <path d="M112 160 C 100 170, 100 186, 110 198 L 150 198 C 158 186, 156 168, 146 160 Z" fill="#a8dfb8"/>
+  <!-- legs -->
+  <path d="M98 196 l 0 22 l 22 0 l -6 -8 l 0 -14 Z" fill="#3f9d6b"/>
+  <path d="M146 196 l 0 22 l 22 0 l -6 -8 l 0 -14 Z" fill="#3f9d6b"/>
+
+  <!-- head (profile facing right, mouth open) -->
+  <path d="M100 152 C 92 112, 112 70, 158 66 L 200 70 C 214 72, 221 84, 216 96 L 176 104 L 178 118 L 210 112 C 216 122, 206 134, 186 138 L 130 150 Z" fill="#4fb676"/>
+  <!-- teeth -->
+  <path d="M180 104 l 4 8 l 5 -9 l 5 9 l 5 -10 l 5 9 l 5 -10" fill="none" stroke="#f5e9c8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- nostril -->
+  <circle cx="206" cy="82" r="2.6" fill="#101820"/>
+  <!-- raised eyebrow (intellectual look) -->
+  <path d="M132 74 C 140 68, 150 68, 158 72" fill="none" stroke="#101820" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- glasses -->
+  <g fill="none" stroke="#f5e9c8" stroke-width="4">
+    <circle cx="142" cy="92" r="13"/>
+    <circle cx="172" cy="90" r="13"/>
+    <path d="M155 92 L 159 91"/>
+    <path d="M129 92 L 112 90"/>
+  </g>
+  <circle cx="142" cy="92" r="5.5" fill="#101820"/>
+  <circle cx="172" cy="90" r="5.5" fill="#101820"/>
+  <circle cx="144" cy="90" r="1.8" fill="#ffffff"/>
+  <circle cx="174" cy="88" r="1.8" fill="#ffffff"/>
+
+  <!-- tiny arms holding the book -->
+  <path d="M150 160 l 16 4 l -2 8 l -16 -3 z" fill="#3f9d6b"/>
+  <path d="M148 176 l 18 2 l -1 8 l -18 -2 z" fill="#3f9d6b"/>
+  <!-- the book (the treasury of knowledge), with a T on the cover -->
+  <g transform="translate(160 158) rotate(-10)">
+    <rect x="0" y="0" width="40" height="30" rx="3" fill="#f5e9c8" stroke="#b08a3e" stroke-width="2"/>
+    <line x1="20" y1="2" x2="20" y2="28" stroke="#b08a3e" stroke-width="2"/>
+    <rect x="6" y="8" width="9" height="2.5" fill="#b08a3e"/>
+    <rect x="9.2" y="8" width="2.6" height="12" fill="#b08a3e"/>
+    <line x1="24" y1="9" x2="35" y2="9" stroke="#b08a3e" stroke-width="1.6"/>
+    <line x1="24" y1="14" x2="35" y2="14" stroke="#b08a3e" stroke-width="1.6"/>
+    <line x1="24" y1="19" x2="33" y2="19" stroke="#b08a3e" stroke-width="1.6"/>
+  </g>
+
+  </svg>
+  <div class="text">
+    <p class="name">T-SAUR</p>
+    <span class="ext">.tsr</span>
+    <div class="tag">An archive format built for AI agents.</div>
+    <div class="row"><span class="pill">bit-exact</span><span class="pill">deterministic</span><span class="pill">content-addressed</span><span class="pill">verified pieces</span><span class="pill">offline</span></div>
+  </div>
+  <div class="foot">Free and open source &middot; Apache-2.0 OR MIT &middot; no account, no service</div>
+  <div class="bar"></div>
+</div></body></html>

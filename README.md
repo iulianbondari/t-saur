@@ -1,4 +1,13 @@
+<p align="center">
+  <img src="docs/brand/tsaur-logo-concept.png" width="180" alt="T-saur logo: an intellectual T-rex with glasses holding a book">
+</p>
+
 # T-saur (`.tsr`) — an archive format built for AI agents
+
+[![ci](https://github.com/iulianbondari/t-saur/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iulianbondari/t-saur/actions/workflows/ci.yml)
+[![license: Apache-2.0 OR MIT](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-3f9d6b)](LICENSE-APACHE)
+[![format v1 frozen](https://img.shields.io/badge/format-v1%20frozen-101820)](docs/spec/TSAUR-FORMAT-SPEC-v1.0.md)
+[![release candidate](https://img.shields.io/badge/version-1.0.0--rc.1-b08a3e)](CHANGELOG.md)
 
 **T-saur** is a new archive format and archiver designed for AI agents first: information-based compression
 (content-defined chunking with deduplication, shared dictionaries and external references, container-aware
