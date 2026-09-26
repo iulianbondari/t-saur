@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/brand/tsaur-logo-concept.png" width="180" alt="T-saur logo: an intellectual T-rex with glasses holding a book">
+  <a href="https://github.com/iulianbondari/t-saur"><img src="docs/brand/tsaur-social-preview.png" width="100%" alt="T-saur (.tsr): an archive format built for AI agents. Bit-exact, deterministic, content-addressed, verified pieces, offline. Free and open source, Apache-2.0 OR MIT, no account, no service."></a>
 </p>
 
 # T-saur (`.tsr`) — an archive format built for AI agents
