@@ -136,9 +136,13 @@ does not count.
    state that the full build is available from source only (`docs/DISTRIBUTION-POLICY.md`).
 5. **Publish** the draft. Release immutability is on: the assets and the tag cannot change
    afterwards; a mistake means a new patch version.
-6. **Registries** (once the maintainer has the accounts): `cargo publish -p tsaur-core` then
-   `cargo publish -p tsaur` from the tagged commit; PyPI and npm follow the bindings on the
-   roadmap. Never publish from a dirty tree or an untagged commit.
+6. **Registries**: `cargo publish -p tsaur-core` then `cargo publish -p tsaur` from the tagged
+   commit (the maintainer's crates.io account, a token scoped to `publish-new`/`publish-update`
+   and to the two crates, or trusted publishing from the release workflow once configured); PyPI
+   and npm follow the bindings on the roadmap. Never publish from a dirty tree or an untagged
+   commit. The release candidate 1.0.0-rc.1 was published on 2026-09-26 from `13c24b5` (`main`,
+   not a tag: the one exception, made to hold the crate names and to open docs.rs; the
+   `.cargo_vcs_info.json` in each `.crate` records the commit).
 7. **After.** `ROADMAP.md` and `docs/V1-CONTRACT.md` §5 updated with what actually ran; the
    next `## [Unreleased]` section opened in `CHANGELOG.md`.
 

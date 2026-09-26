@@ -47,6 +47,10 @@ Only the latest released minor version receives security fixes. Format version 1
 * **Encryption is authenticated and per blob.** XChaCha20-Poly1305 with a random archive key;
   section headers are bound as associated data. Keys are unlocked by Argon2id (RFC 9106; the reader
   refuses parameters below 64 MiB / t=3) or hybrid X25519 + ML-KEM-768 (FIPS 203) recipients.
+  The ML-KEM implementation is the RustCrypto `ml-kem` crate; the maintainer knows of no
+  independent audit of it, which is why the recipient construction is hybrid: the archive key is
+  protected by X25519 as well, so a flaw in the ML-KEM part leaves the classical protection
+  intact (`docs/DESIGN-AGENT-FIRST.md`, open check 7).
   Signatures are Ed25519 over the header and the section table; verification is opt-in and the
   public key must be supplied by the caller (the archive's own claim is never trusted).
 * **Content is data.** Nothing inside an archive is executed or interpreted. The agent commands

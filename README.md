@@ -8,12 +8,15 @@
 [![license: Apache-2.0 OR MIT](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-3f9d6b)](LICENSE-APACHE)
 [![format v1 frozen](https://img.shields.io/badge/format-v1%20frozen-101820)](docs/spec/TSAUR-FORMAT-SPEC-v1.0.md)
 [![release candidate](https://img.shields.io/badge/version-1.0.0--rc.1-b08a3e)](CHANGELOG.md)
+[![crates.io](https://img.shields.io/crates/v/tsaur.svg)](https://crates.io/crates/tsaur)
+[![docs.rs](https://img.shields.io/docsrs/tsaur-core)](https://docs.rs/tsaur-core)
 
 **T-saur** is a free, open-source archive format (`.tsr`) and command-line archiver, written in Rust, for files that
 people and AI agents need to list, search, read and verify without unpacking them. Archives are content-addressed
 (BLAKE3) and deterministic; authenticated encryption with post-quantum recipients, signatures, offline N + M recovery
 volumes and a built-in Model Context Protocol server are optional parts of the same binary. Format v1 is frozen; the
-current version is 1.0.0-rc.1, with no tagged release or package published yet (`ROADMAP.md`, "Step 0").
+current version is 1.0.0-rc.1, published on crates.io, with no tagged release or binary package yet
+(`ROADMAP.md`, "Step 0").
 
 In more detail, T-saur is a new archive format and archiver designed for AI agents first: information-based
 compression (content-defined chunking with deduplication, shared dictionaries and external references,
@@ -88,8 +91,15 @@ T-saur is not the right tool, today, when:
 Release packages (`tsaur-<version>-<platform>-lite.zip`; the full build with Lepton JPEG recompression is built
 from source, see `docs/DISTRIBUTION-POLICY.md`) contain the binary, this documentation and the licenses; `docs/GUIDE.md` walks through packing,
 verifying, restoring, volumes and transfers, and every command in it is executed by `tools/check_guide.py` before a
-release. No version tag has been pushed yet, so no package exists today (`ROADMAP.md`, "Step 0"): build from source
-(Rust 1.87 or newer and a C toolchain, `docs/INSTALL.md`):
+release. The crates are on crates.io (`tsaur`, the command-line tool; `tsaur-core`, the library), so with Rust 1.87
+or newer and a C toolchain (`docs/INSTALL.md`) one command installs the binary; no binary package exists yet (that
+comes with the first version tag, `ROADMAP.md`, "Step 0"):
+
+```bash
+cargo install tsaur                         # full build; add --no-default-features for the lite build
+```
+
+or from a clone of this repository:
 
 ```bash
 cd tsaur
@@ -219,7 +229,10 @@ it leaves behind, is in `docs/DESIGN-AGENT-FIRST.md` §3.
 
 Full tables and command lines: `benchmarks/RESULTS.md`, `benchmarks/RESULTS-rust.md`.
 Same corpora for everything: A = 10 unrelated files (.md/.txt/.docx/.pdf, 1.54 MB, 57 % of it an image-heavy PDF);
-B = A plus 5 edited versions (2.19 MB). 7-Zip 26.03 and WinRAR 7.23 run through their CLIs.
+B = A plus 5 edited versions (2.19 MB). 7-Zip 26.03 and WinRAR 7.23 run through their CLIs. These corpora are small
+(the largest below, the machine-code ones, are 13–22 MB); measurements on large collections and the transfer
+measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`) are still to be made and will be
+published in `benchmarks/` when they exist.
 
 Percentages are archive size relative to the input: **lower is better**.
 

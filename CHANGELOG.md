@@ -6,6 +6,11 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [Unreleased]
 
+- **On crates.io**: `tsaur-core` and `tsaur` 1.0.0-rc.1, published by the maintainer on
+  2026-09-26 from commit `13c24b5` of this repository (`cargo install tsaur`;
+  `.crate` SHA-256 `a1dee8f4dc29fcb4cb10bab8e3459aab73ad8018358faa776cd89dbc5e9588a5` for `tsaur-core`,
+  `9b1880280b9796793d81e8b610fa27a4296035149902b864080797e09a0e23b8` for `tsaur`); docs.rs builds the library documentation.
+
 - **README for readers who arrive from a search** (no change to any claim): a plain lead paragraph
   that says what T-saur is and for whom, the original paragraph kept below it; "When to use it,
   and when not", "How it differs from ZIP, 7z, RAR and tar + zstd" and "Questions and answers",
