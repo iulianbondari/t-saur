@@ -24,6 +24,7 @@ on:
       - ".gitignore"
       - ".gitattributes"
       - "llms.txt"
+      - ".github/FUNDING.yml"
   pull_request:
     paths-ignore:
       - "docs/**"
@@ -41,6 +42,7 @@ on:
       - ".gitignore"
       - ".gitattributes"
       - "llms.txt"
+      - ".github/FUNDING.yml"
   # run the full matrix on demand for any branch (Actions tab -> ci -> Run workflow)
   workflow_dispatch:
 

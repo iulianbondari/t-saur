@@ -28,6 +28,7 @@ on:
       - ".gitignore"
       - ".gitattributes"
       - "llms.txt"
+      - ".github/FUNDING.yml"
 
 permissions:
   contents: read

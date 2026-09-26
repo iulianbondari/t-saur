@@ -219,7 +219,10 @@ it leaves behind, is in `docs/DESIGN-AGENT-FIRST.md` §3.
 
 Full tables and command lines: `benchmarks/RESULTS.md`, `benchmarks/RESULTS-rust.md`.
 Same corpora for everything: A = 10 unrelated files (.md/.txt/.docx/.pdf, 1.54 MB, 57 % of it an image-heavy PDF);
-B = A plus 5 edited versions (2.19 MB). 7-Zip 26.03 and WinRAR 7.23 run through their CLIs.
+B = A plus 5 edited versions (2.19 MB). 7-Zip 26.03 and WinRAR 7.23 run through their CLIs. These corpora are small
+(the largest below, the machine-code ones, are 13–22 MB); measurements on large collections and the transfer
+measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`) are still to be made and will be
+published in `benchmarks/` when they exist.
 
 Percentages are archive size relative to the input: **lower is better**.
 
