@@ -7,7 +7,7 @@
 [![ci](https://github.com/iulianbondari/t-saur/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/iulianbondari/t-saur/actions/workflows/ci.yml)
 [![license: Apache-2.0 OR MIT](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-3f9d6b)](LICENSE-APACHE)
 [![format v1 frozen](https://img.shields.io/badge/format-v1%20frozen-101820)](docs/spec/TSAUR-FORMAT-SPEC-v1.0.md)
-[![release candidate](https://img.shields.io/badge/version-1.0.0--rc.1-b08a3e)](CHANGELOG.md)
+[![release candidate](https://img.shields.io/badge/version-1.0.0--rc.2-b08a3e)](CHANGELOG.md)
 [![crates.io](https://img.shields.io/crates/v/tsaur.svg)](https://crates.io/crates/tsaur)
 [![docs.rs](https://img.shields.io/docsrs/tsaur-core)](https://docs.rs/tsaur-core)
 
@@ -15,7 +15,7 @@
 people and AI agents need to list, search, read and verify without unpacking them. Archives are content-addressed
 (BLAKE3) and deterministic; authenticated encryption with post-quantum recipients, signatures, offline N + M recovery
 volumes and a built-in Model Context Protocol server are optional parts of the same binary. Format v1 is frozen; the
-current version is 1.0.0-rc.1, published on crates.io, with no tagged release or binary package yet
+current version is 1.0.0-rc.2 (1.0.0-rc.1 is on crates.io; the rc.2 tag brings the first binary packages, see Releases)
 (`ROADMAP.md`, "Step 0").
 
 In more detail, T-saur is a new archive format and archiver designed for AI agents first: information-based
@@ -36,14 +36,14 @@ Start here: `docs/INSTALL.md` (packages, building from source), `docs/GUIDE.md` 
 `docs/V1-CONTRACT.md` (what v1.0 promises and how it is checked), `SECURITY.md` (what the reader guarantees, how to
 report), `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
 
-**Contents:** [Status](#status-100-rc1-release-candidate) ·
+**Contents:** [Status](#status-100-rc2-release-candidate) ·
 [When to use it, and when not](#when-to-use-it-and-when-not) · [Quick start](#quick-start) ·
 [For AI agents: the MCP server](#for-ai-agents-the-mcp-server) ·
 [How it differs from ZIP, 7z, RAR and tar + zstd](#how-it-differs-from-zip-7z-rar-and-tar--zstd) ·
 [What the measurements show](#what-the-measurements-show) · [Questions and answers](#questions-and-answers) ·
 [Repository layout](#repository-layout) · [Security](#security) · [License](#license)
 
-## Status: 1.0.0-rc.1 (release candidate)
+## Status: 1.0.0-rc.2 (release candidate)
 
 Format v1 is frozen and the candidate is functional: bit-exact archiving and restoration, safe listing and
 extraction of untrusted archives, offline volume sets with parity, direct exchange between two instances (plain or
@@ -336,7 +336,7 @@ written and checked against them (`docs/V1-CONTRACT.md` §2).
 
 Format v1 is frozen: v1 readers accept exactly version 1, unknown ids are refused rather than skipped, and the golden
 archives in `tsaur/crates/tsaur-core/tests/golden/` are the reference that every v1 reader and writer must reproduce
-(`docs/V1-CONTRACT.md` §2). The version number 1.0.0-rc.1 refers to the software; the format is already v1.
+(`docs/V1-CONTRACT.md` §2). The version number 1.0.0-rc.2 refers to the software; the format is already v1.
 
 ### Which build do I want, lite or full?
 

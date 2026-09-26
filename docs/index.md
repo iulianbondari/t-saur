@@ -8,9 +8,9 @@ A free, open-source archive format and command-line archiver, written in Rust, f
 people and AI agents need to list, search, read and verify without unpacking them. Archives are
 content-addressed (BLAKE3) and deterministic; encryption with post-quantum recipients, signatures,
 offline N + M recovery volumes and a Model Context Protocol server are optional parts of the same
-binary. Format v1 is frozen; the software is at 1.0.0-rc.1, on crates.io (`cargo install tsaur`;
-library `tsaur-core`, <https://docs.rs/tsaur-core>), with no tagged release or binary package
-yet. Apache-2.0 OR MIT, no account, no service.
+binary. Format v1 is frozen; the software is at 1.0.0-rc.2 (1.0.0-rc.1 on crates.io (`cargo install tsaur`;
+library `tsaur-core`, <https://docs.rs/tsaur-core>); binary packages come with the rc.2 tag on the
+Releases page. Apache-2.0 OR MIT, no account, no service.
 
 Repository and README: <https://github.com/iulianbondari/t-saur>
 
