@@ -1851,7 +1851,7 @@ checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
 
 [[package]]
 name = "tsaur"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "anyhow",
  "base64",
@@ -1866,7 +1866,7 @@ dependencies = [
 
 [[package]]
 name = "tsaur-core"
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 dependencies = [
  "argon2",
  "blake3",

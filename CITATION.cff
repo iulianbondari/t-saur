@@ -7,13 +7,13 @@ authors:
     given-names: Iulian
 repository-code: "https://github.com/iulianbondari/t-saur"
 license: "Apache-2.0 OR MIT"
-version: 1.0.0-rc.1
-date-released: "2026-09-24"
+version: 1.0.0-rc.2
+date-released: "2026-09-26"
 abstract: >-
   T-saur (.tsr) is a free, open-source archive format and archiver: content-defined chunking with
   BLAKE3 identities, container-aware and per-block compression, offline recovery volumes with
   Reed-Solomon parity, optional authenticated encryption and signatures, and read-without-extract
-  operations with a Model Context Protocol server for AI agents. Version 1.0.0-rc.1 freezes format
+  operations with a Model Context Protocol server for AI agents. Version 1.0.0-rc.2 freezes format
   version 1.
 keywords:
   - archive format

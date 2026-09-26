@@ -6,6 +6,16 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-rc.2] — 2026-09-26 (release candidate 2)
+
+The second candidate: everything below was merged after the rc.1 snapshot of 2026-09-24 and is
+covered by the same producer checks (CI on three systems with the determinism comparison on
+every change; the Linux gate and campaign of rc.1 apply to the unchanged archive code, the
+`--effort` and transfer changes have their own tests). No change to the archive format or the
+wire protocol. Note: the crates published on crates.io as 1.0.0-rc.1 were packaged from commit
+`13c24b5`, which already contained the `--effort`, network-limit and CI changes listed here;
+rc.2 is the first version with a git tag and binary packages.
+
 - **On crates.io**: `tsaur-core` and `tsaur` 1.0.0-rc.1, published by the maintainer on
   2026-09-26 from commit `13c24b5` of this repository (`cargo install tsaur`;
   `.crate` SHA-256 `a1dee8f4dc29fcb4cb10bab8e3459aab73ad8018358faa776cd89dbc5e9588a5` for `tsaur-core`,

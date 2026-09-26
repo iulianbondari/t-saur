@@ -1,6 +1,6 @@
 # T-saur
 
-> T-saur (`.tsr`) is a free, open-source archive format and command-line archiver written in Rust: content-addressed (BLAKE3), deterministic archives that people and AI agents can list, grep, read by line or byte range, and verify without unpacking, from a shell or through the built-in Model Context Protocol server (`tsaur mcp`). Optional: authenticated encryption with hybrid X25519 + ML-KEM-768 recipients, Ed25519 signatures, offline N + M recovery volumes (Reed-Solomon), direct transfer between two instances over pinned TLS. Format v1 is frozen; software version 1.0.0-rc.1; Apache-2.0 OR MIT; single maintainer (Iulian Bondari), built with substantial AI assistance (see AUTHORS.md).
+> T-saur (`.tsr`) is a free, open-source archive format and command-line archiver written in Rust: content-addressed (BLAKE3), deterministic archives that people and AI agents can list, grep, read by line or byte range, and verify without unpacking, from a shell or through the built-in Model Context Protocol server (`tsaur mcp`). Optional: authenticated encryption with hybrid X25519 + ML-KEM-768 recipients, Ed25519 signatures, offline N + M recovery volumes (Reed-Solomon), direct transfer between two instances over pinned TLS. Format v1 is frozen; software version 1.0.0-rc.2; Apache-2.0 OR MIT; single maintainer (Iulian Bondari), built with substantial AI assistance (see AUTHORS.md).
 
 Things an agent should know before reading further:
 
