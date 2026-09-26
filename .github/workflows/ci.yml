@@ -23,6 +23,7 @@ on:
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - ".gitignore"
       - ".gitattributes"
+      - "llms.txt"
   pull_request:
     paths-ignore:
       - "docs/**"
@@ -39,6 +40,7 @@ on:
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - ".gitignore"
       - ".gitattributes"
+      - "llms.txt"
   # run the full matrix on demand for any branch (Actions tab -> ci -> Run workflow)
   workflow_dispatch:
 
@@ -60,10 +62,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macOS minutes are billed at ten times the Linux rate, so pull requests run on Linux and
-        # Windows; every push to main and every manual run covers all three (the ruleset for main
-        # requires the Linux and Windows checks and the determinism comparison on pull requests)
-        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest", "windows-latest"]' || '["ubuntu-latest", "macos-latest", "windows-latest"]') }}
+        # every event runs the three systems: GitHub-hosted runners are free for a public
+        # repository, and the ruleset for main requires all three checks plus the determinism
+        # comparison (while the repository was private, pull requests skipped macOS for its cost)
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       # third-party actions pinned to commit SHAs (the tag is in the comment)
@@ -143,13 +145,12 @@ jobs:
       - name: Compare archive hashes across platforms
         run: |
           # Each file holds one line per archive variant, "<sha256>  <platform> <variant>\n". One
-          # file per matrix entry is required (two on pull requests, three on pushes to main and
-          # manual runs) and exactly one distinct hash per variant; the earlier form (`cat | sort -u
-          # | wc -l` over files without a trailing newline) joined the hashes into one line and
-          # never compared.
+          # file per matrix entry is required (three: Linux, macOS, Windows) and exactly one
+          # distinct hash per variant; the earlier form (`cat | sort -u | wc -l` over files
+          # without a trailing newline) joined the hashes into one line and never compared.
           python3 - <<'EOF'
           import os, pathlib, sys
-          expected = 2 if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request' else 3
+          expected = 3
           files = sorted(pathlib.Path('.').glob('det-*.sha256'))
           rows = [line.split() for f in files for line in f.read_text().splitlines()]
           for r in rows:

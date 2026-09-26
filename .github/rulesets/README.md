@@ -3,9 +3,10 @@
 `main.json` is the ruleset the maintainer applies to `main`: no deletion, no force-push, changes
 only through pull requests (review threads resolved; no approval count, because the project has
 one maintainer), and the CI checks of `.github/workflows/ci.yml` that run on pull requests
-required before merging: `test (ubuntu-latest)`, `test (windows-latest)` and `determinism`.
-The macOS job runs on every push to `main` and on manual runs (macOS minutes cost ten times the
-Linux rate), so it is not a pull-request check. Documentation-only changes do not trigger that
+required before merging: `test (ubuntu-latest)`, `test (macos-latest)`, `test (windows-latest)`
+and `determinism`. Every event runs the three systems: GitHub-hosted runners are free for a
+public repository (while the repository was private, pull requests skipped macOS for its cost,
+and the ruleset did not require it). Documentation-only changes do not trigger that
 workflow; `.github/workflows/ci-docs.yml` runs instead, on exactly the paths ci.yml ignores, with
 jobs of the same names that build nothing and succeed, so that the required checks are reported
 and such a pull request can be merged (a path-filtered required check that never runs would block

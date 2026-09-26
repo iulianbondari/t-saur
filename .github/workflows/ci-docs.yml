@@ -1,7 +1,7 @@
 # Companion of ci.yml for changes that touch only the paths ci.yml ignores.
 #
-# The ruleset for `main` requires the checks `test (ubuntu-latest)`, `test (windows-latest)` and
-# `determinism` on every pull request, and GitHub blocks a merge while a required check is
+# The ruleset for `main` requires the checks `test (ubuntu-latest)`, `test (macos-latest)`,
+# `test (windows-latest)` and `determinism` on every pull request, and GitHub blocks a merge while a required check is
 # missing. ci.yml does not run for documentation-only changes, so without this workflow such a
 # pull request could never be merged (GitHub's documented remedy: a second workflow with the same
 # job names that runs on the complementary path filter and succeeds). The jobs below build
@@ -27,6 +27,7 @@ on:
       - ".github/PULL_REQUEST_TEMPLATE.md"
       - ".gitignore"
       - ".gitattributes"
+      - "llms.txt"
 
 permissions:
   contents: read
@@ -35,7 +36,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     # the job name carries the matrix value so that it matches the required check; the runner
     # is Linux for both entries (nothing is built)
     runs-on: ubuntu-latest

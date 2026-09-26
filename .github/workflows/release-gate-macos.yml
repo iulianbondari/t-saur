@@ -1,0 +1,47 @@
+# The release gate (tools/release_gate.py) on macOS, started by hand: builds both binaries, runs
+# both test suites with a robustness campaign, the golden-archive manifest check, the cross-build
+# compatibility check, the guide with both packaged binaries, `cargo package --dry-run` and the
+# release packages, and uploads the report as an artifact. It publishes nothing. The maintainer
+# downloads the report and commits it under docs/review/ through a pull request, which is what
+# moves macOS from "covered by CI" to "verified" in docs/V1-CONTRACT.md §5. Free on a public
+# repository; about 40 minutes.
+name: release-gate-macos
+
+on:
+  workflow_dispatch:
+    inputs:
+      robustness_seconds:
+        description: "length of the robustness campaign in seconds (60 = the release setting)"
+        default: "60"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable branch, 2026-09
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: |
+            tsaur -> target
+            tsaur -> target-nolepton
+      - name: Release gate
+        run: python3 tools/release_gate.py --robustness-seconds "${{ github.event.inputs.robustness_seconds }}" --report gate-macos-arm64.md
+      - name: Show the report
+        if: always()
+        run: cat gate-macos-arm64.md || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: release-gate-macos-report
+          path: |
+            gate-macos-arm64.md
+            dist/PACKAGES.md
+          if-no-files-found: warn
