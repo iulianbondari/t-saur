@@ -19,6 +19,14 @@ file, and it makes no network connection unless you run `tsaur volumes serve` or
 Packages exist for the platforms listed on the release page. Only the platforms on which the test
 suite was actually run are declared verified in `V1-CONTRACT.md` §5.
 
+## From crates.io
+
+With Rust 1.87 or newer and the C toolchain named below, `cargo install tsaur` builds and installs
+the full binary into `~/.cargo/bin`; `cargo install tsaur --no-default-features` installs the lite
+build (no Lepton). The library is `tsaur-core` (<https://docs.rs/tsaur-core>). The crates are
+packaged from a commit of this repository (`.cargo_vcs_info.json` inside each `.crate` names it;
+1.0.0-rc.1 comes from `13c24b5`), so what crates.io serves is what this repository contains.
+
 ## From source
 
 Requirements: Rust 1.87 or newer (`rustup` installs it), a C toolchain for the compression

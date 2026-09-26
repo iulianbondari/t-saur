@@ -50,7 +50,7 @@ request with measurements, and nothing below weakens a guarantee of `docs/V1-CON
 - [ ] the format changes that 1.x kept behind `requires` markers become native in v2; spec 2.0, golden archives for v2, `compat_check` across v1/v2 readers
 
 ### Ecosystem and adoption (continuous, starts with the public release)
-- [ ] packages: crates.io (`tsaur-core`, `tsaur`), PyPI, npm, Homebrew, winget, Scoop; reproducible builds
+- [ ] packages: crates.io (`tsaur-core`, `tsaur`: **1.0.0-rc.1 published 2026-09-26** from `13c24b5`), PyPI, npm, Homebrew, winget, Scoop; reproducible builds
 - [ ] integrations: file-manager extension on Windows, Quick Look on macOS, VS Code extension, agent platforms (Skills, Files APIs)
 - [ ] conformance suite and codec registry for other implementations; spec published under CC-BY-4.0
 - adoption and trust are earned in public: releases, CVE handling per `SECURITY.md`, external reviews; no shortcut is planned
