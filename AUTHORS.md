@@ -12,7 +12,11 @@ own contributions and license them the same way (`CONTRIBUTING.md`).
 **AI assistance.** The code, the tests, the benchmark tooling and most of the documentation were
 produced with substantial help from Anthropic's Claude, working under his direction in
 interactive sessions: he set the requirements and reviewed the results, the assistant wrote and
-verified the code. This is stated here so that nobody mistakes the volume of the work for a team
+verified the code. The research that preceded the design (the survey of archivers, formats,
+content addressing, encryption and agent protocols) and the first directions of the project were
+worked out with OpenAI's ChatGPT, also under his direction; those notes are his working material
+and their conclusions are in `docs/DESIGN-AGENT-FIRST.md`. GitHub's contributor list shows only
+commit identities, so it names Claude and not ChatGPT; this page is the complete record. This is stated here so that nobody mistakes the volume of the work for a team
 that does not exist, and as a matter of provenance: the treatment of AI-assisted material differs
 between jurisdictions, and this page records the facts so that anyone can apply the rules of
 their own. See `docs/PROVENANCE.md` for what was checked before publication.

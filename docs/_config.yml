@@ -1,0 +1,11 @@
+# GitHub Pages (Jekyll) for the documentation folder: Settings -> Pages -> Deploy from a branch,
+# main, /docs. The Markdown files render as they are; nothing is generated.
+title: T-saur
+description: "T-saur (.tsr): a content-addressed, deterministic archive format built for AI agents. Rust, Apache-2.0 OR MIT."
+theme: jekyll-theme-minimal
+logo: brand/tsaur-logo-concept.png
+show_downloads: false
+exclude:
+  - brand/tsaur-social-preview.html
+  - design/plans/deny.toml.proposed
+  - "*.py"
