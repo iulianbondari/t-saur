@@ -6,6 +6,12 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [Unreleased]
 
+- **Files of other formats are named, not called short**: the reader judges the magic before
+  the length, so a `.tsr` file of another format is "not a T-saur archive" whatever its size,
+  and a file starting with `TSR1` is identified as a TSR (Time Space Reducer) archive, an
+  archiver that shares the first three magic bytes and the extension (its author wrote in on
+  2026-09-28). Documented in the specification §13 and the README's questions.
+
 ## [1.0.0-rc.2] — 2026-09-26 (release candidate 2)
 
 Tagged `v1.0.0-rc.2` on `15a8f0b` and published on 2026-09-28 as an immutable GitHub
