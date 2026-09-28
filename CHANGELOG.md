@@ -6,6 +6,15 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [Unreleased]
 
+- **macOS verified**: the release gate ran on a GitHub-hosted macOS arm64 runner on 2026-09-28
+  (`release-gate-macos.yml`, commit `8930544`, all 17 steps passed, 60 s robustness campaign);
+  the report is `docs/review/RC2-VERIFICATION-REPORT-macos-arm64.md` and `docs/V1-CONTRACT.md`
+  §5 lists macOS with Windows and Linux as verified. The macOS packages built by the gate have
+  SHA-256 `2d6dfb37b6181973dcf9703601c03dc07b0bf382049e46f09b3d55803da8b778` (lite) and
+  `6f4c93465461b1042a09ffbf78aef18d173b40aa04893709adfef3aa6d0c31b7` (full); the lite one
+  differs from the release asset because the two were built on different runners (package
+  builds are not reproducible yet, roadmap 1.1).
+
 - **Files of other formats are named, not called short**: the reader judges the magic before
   the length, so a `.tsr` file of another format is "not a T-saur archive" whatever its size,
   and a file starting with `TSR1` is identified as a TSR (Time Space Reducer) archive, an
