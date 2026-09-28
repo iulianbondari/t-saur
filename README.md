@@ -15,7 +15,8 @@
 people and AI agents need to list, search, read and verify without unpacking them. Archives are content-addressed
 (BLAKE3) and deterministic; authenticated encryption with post-quantum recipients, signatures, offline N + M recovery
 volumes and a built-in Model Context Protocol server are optional parts of the same binary. Format v1 is frozen; the
-current version is 1.0.0-rc.2 (1.0.0-rc.1 is on crates.io; the rc.2 tag brings the first binary packages, see Releases)
+current version is 1.0.0-rc.2, published as a pre-release with lite packages for Windows, macOS and Linux
+(<https://github.com/iulianbondari/t-saur/releases/tag/v1.0.0-rc.2>; 1.0.0-rc.1 is on crates.io)
 (`ROADMAP.md`, "Step 0").
 
 In more detail, T-saur is a new archive format and archiver designed for AI agents first: information-based

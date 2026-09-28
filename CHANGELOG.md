@@ -8,6 +8,15 @@ All notable changes to T-saur are recorded here. The format follows
 
 ## [1.0.0-rc.2] — 2026-09-26 (release candidate 2)
 
+Tagged `v1.0.0-rc.2` on `15a8f0b` and published on 2026-09-28 as an immutable GitHub
+pre-release with the lite packages built and tested by `.github/workflows/release.yml`:
+`tsaur-1.0.0-rc.2-linux-x64-lite.zip` (SHA-256
+`f143c6e068f90167e79a3a34c939e929ed99f265ea8f40f64d33dcd6fb99d3b1`),
+`tsaur-1.0.0-rc.2-macos-arm64-lite.zip`
+(`990a4deb3c900d0954818f71a8130de7dc96e4acb1aa6c1a76d99fbde3dfa27c`),
+`tsaur-1.0.0-rc.2-windows-x64-lite.zip`
+(`4a27ea76e900b8442f0eee83e1f4d46ab15ac2e22ccfec380a0ab5b173717f10`), plus `SHA256SUMS`.
+
 The second candidate: everything below was merged after the rc.1 snapshot of 2026-09-24 and is
 covered by the same producer checks (CI on three systems with the determinism comparison on
 every change; the Linux gate and campaign of rc.1 apply to the unchanged archive code, the

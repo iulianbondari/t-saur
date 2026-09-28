@@ -21,7 +21,7 @@ request with measurements, and nothing below weakens a guarantee of `docs/V1-CON
 - [x] publish the repository (**done 2026-09-25**): history rewritten once while private, then pushed as a new repository, public, with the ruleset, private vulnerability reporting and the social preview in place (`docs/PROVENANCE.md`, `docs/RELEASE-PROCESS.md` A1-A2)
 - [ ] independent review by an outside evaluator (`docs/review/REVIEW-PACKAGE.md`); a public repository is what makes it possible
 - [ ] measurements on two real devices (`docs/design/TWO-DEVICE-BENCHMARK-PLAN.md`)
-- [ ] release 1.0.0 from the tag: draft release workflow, packages checked, CHANGELOG
+- [ ] release 1.0.0 from the tag: draft release workflow, packages checked, CHANGELOG (**rehearsed 2026-09-28** with `v1.0.0-rc.2`: the workflow built and tested the three lite packages, the draft was reviewed and published as an immutable pre-release)
 
 ### 1.1 — faster at maximum ratio, executables, supply-chain hygiene (no format change)
 - [x] **speed of `--codec best`** (**done 2026-09-25**, `pack --effort 1..5`, default unchanged; measurements in `CHANGELOG.md`): choose the codec on a 64 KiB sample of each block (zstd -19 / xz 9e / PPMd), run only the winner on the whole block; keep the incompressible-block shortcut; add `--effort 1..5` (1 = zstd only, 5 = today's full trial); target ≤ 2× the `--codec zstd` time at ≤ 0.5 point of ratio, measured on the four corpora
