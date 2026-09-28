@@ -71,13 +71,12 @@ archives, the guide, the packages) and recorded the result:
 |---|---|---|
 | **Windows 11 x64** (MSVC toolchain, rustc 1.93.1) | release gate, 60 s robustness campaign | `docs/review/RC1-VERIFICATION-REPORT.md` |
 | **Linux x64** (glibc 2.39, rustc 1.94.1, cloud container with 4 logical CPUs) | release gate on commit `45c6c56` (`a8ef56e` before the history rewrite of 2026-09-25, the hash the reports print), 60 s robustness campaign; a separate 300 s campaign, 8 targets, no findings | `docs/review/RC1-VERIFICATION-REPORT-linux-x64.md`, `docs/review/ROBUSTNESS-CAMPAIGN-linux-x64.md` |
+| **macOS arm64** (macOS 26.6.2, rustc 1.98.1, GitHub-hosted `macos-latest` runner with 3 logical CPUs) | release gate on commit `8930544` (version 1.0.0-rc.2), 60 s robustness campaign, all 17 steps passed, run by `.github/workflows/release-gate-macos.yml` on 2026-09-28 and the report committed by the maintainer | `docs/review/RC2-VERIFICATION-REPORT-macos-arm64.md` |
 
-**macOS** (arm64, GitHub `macos-latest`) has run the CI matrix only (`.github/workflows/ci.yml`,
-run 36099317045 on 2026-09-25: release build, both test suites including the short robustness
-run, clippy, rustfmt, the golden archives read by both binaries, the guide with both binaries,
-and the determinism fixture). That covers the suite but not the release gate, so macOS is
-**covered by CI, not declared verified** until someone runs the gate there and records the
-result. Windows and Linux ran the same CI matrix in that run as well.
+The three systems have now run the full gate. The Linux and Windows reports are from the rc.1
+snapshot; the macOS report is from the rc.2 code, whose archive code differs from rc.1 by the
+`--effort` sampling (default unchanged, golden archives reproduced) and the transfer options.
+Every system also runs the CI matrix on every change (`.github/workflows/ci.yml`).
 
 **Determinism across platforms (P2).** The fixture archive written by the CI job has the same
 SHA-256 on the Linux, macOS and Windows runners and on the Linux verification machine (both

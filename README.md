@@ -84,8 +84,7 @@ T-saur is not the right tool, today, when:
   explicitly outside v1.0 (`docs/V1-CONTRACT.md` §3; in-place update is answered by `tsaur update` in roadmap 1.2);
 - executables are most of the input: 7-Zip's BCJ2 still leads by 1–2 points (measurements below);
 - an independently reviewed implementation is required: every check so far was run by the producer of the code
-  (`docs/V1-CONTRACT.md` §6), the outside review is an open item of the v1.0 gate (`ROADMAP.md`), and macOS is
-  covered by CI but not declared verified (`docs/V1-CONTRACT.md` §5).
+  (`docs/V1-CONTRACT.md` §6) and the outside review is an open item of the v1.0 gate (`ROADMAP.md`).
 
 ## Quick start
 
