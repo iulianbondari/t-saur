@@ -292,6 +292,11 @@ Prototype numbers (`benchmarks/RESULTS.md`, 10 mixed files, 1.54 MB): bit-exact 
 ## 12. Versioning and extensibility
 
 - `version` in header = major; manifest `tsaur` = schema version. Unknown sections/keys MUST be ignored (readers) and preserved (rewriters).
+- **Identification needs all four magic bytes and the version.** Another archiver, TSR (Time
+  Space Reducer, magic `TSR1`, public beta of September 2026), also uses the `.tsr` extension
+  and shares the first three bytes `TSR`; a tool that identifies files by a three-byte prefix
+  would confuse the two. T-saur readers compare the full `TSR\x1A` and name the other format
+  in their error when they see `TSR1`; the reverse courtesy was offered by TSR's author.
 - **v1 readers accept exactly `version = 1`** in `.tsr` headers and `.tsrv` volume headers. Any other value is refused with "unsupported format version N" (CLI exit code 2), never read with v1 rules: a future major version may change anything after the magic and the version field. For `.tsrv` this holds even when the trailer of the file is intact (a volume whose header names another version is not treated as a damaged v1 volume).
 - **Writer freeze.** The reference writer records `tsaur-core/1.0` as generator in manifests, derived views and volume descriptors; the same inputs, options and build produce byte-identical archives in every 1.x release (`tests/golden.rs` compares the writer's output with the committed golden archives). A change of those bytes is a format event: it needs a new generator string, regenerated golden archives, a CHANGELOG entry and compatibility tests, and it may not make v1 readers misread anything.
 - **Readers stay backward compatible within v1**: every archive written by any 1.x release opens in every later 1.x reader; entries that need an optional reader feature (today only Lepton segments, `requires: lepton`) are reported by name, never silently skipped.

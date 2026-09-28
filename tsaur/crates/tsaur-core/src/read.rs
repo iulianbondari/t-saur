@@ -105,6 +105,16 @@ fn delta_depth(bi: usize, blobs: &[crate::manifest::BlobRecord], blob_of_chunk: 
 /// Parse and validate the container framing: header, trailer, section table (CRC) and every
 /// section's BLAKE3 hash. Needs no credentials.
 fn framing(data: &[u8]) -> Result<(Header, Vec<SectionEntry>)> {
+    // The magic is judged before the length, so that a file of another format is reported as
+    // such and not as a short T-saur archive. The first three bytes are shared with TSR (Time
+    // Space Reducer, magic "TSR1"), another archiver that uses the `.tsr` extension; a reader
+    // must compare all four bytes, and the message names that format when it sees it.
+    if data.len() >= 4 && data[..4] != format::MAGIC {
+        if &data[..4] == b"TSR1" {
+            return Err(Error::Corrupt("not a T-saur archive: the file starts with \"TSR1\", the magic of TSR (Time Space Reducer), a different archiver that also uses the .tsr extension".into()));
+        }
+        return Err(Error::BadMagic);
+    }
     if data.len() < format::HEADER_LEN + format::TRAILER_LEN {
         return Err(Error::Corrupt("file too short".into()));
     }
@@ -250,9 +260,7 @@ impl Reader {
     }
 
     fn from_backing(data: Backing, creds: &Credentials) -> Result<Reader> {
-        if data.len() < format::HEADER_LEN + format::TRAILER_LEN {
-            return Err(Error::Corrupt("file too short".into()));
-        }
+        // the magic and the length are judged by `framing`, magic first
         let (header, sections) = framing(&data)?;
         let find = |t: u8| sections.iter().find(|s| s.t == t).map(|s| &data[s.off as usize..(s.off + s.len) as usize]);
 

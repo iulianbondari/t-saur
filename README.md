@@ -333,6 +333,15 @@ No. `.tsr` is its own format (header `TSR\x1A`, `docs/spec/TSAUR-FORMAT-SPEC-v1.
 reader today. The specification is CC-BY-4.0 and the golden archives are CC0, so a second implementation can be
 written and checked against them (`docs/V1-CONTRACT.md` §2).
 
+### Is `.tsr` used by another program?
+
+Yes: TSR (Time Space Reducer), another archiver written in Rust with a public beta since
+September 2026, also names its archives `.tsr`, and its magic `TSR1` shares the first three
+bytes with T-saur's `TSR\x1A`. Neither tool misreads the other's files: both compare all four
+bytes, and `tsaur` says "the magic of TSR (Time Space Reducer)" when it meets one. Tools that
+identify files by a three-byte prefix are the only ones that could confuse them
+(`docs/spec/TSAUR-FORMAT-SPEC-v1.0.md` §13).
+
 ### Is the format stable?
 
 Format v1 is frozen: v1 readers accept exactly version 1, unknown ids are refused rather than skipped, and the golden

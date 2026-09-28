@@ -719,3 +719,27 @@ fn serve_and_fetch_check_revocations_and_per_set_lists_at_startup() {
     assert!(!dir.join("nothing").exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn files_of_other_formats_are_named_not_called_short() {
+    let dir = fixture("magic");
+    // TSR (Time Space Reducer) shares the first three magic bytes and the .tsr extension
+    let other = dir.join("other.tsr");
+    std::fs::write(&other, b"TSR1\0\0\0\0").unwrap();
+    let (code, _, stderr) = run(&["info", &s(&other)]);
+    assert_eq!(code, 2, "{stderr}");
+    assert!(stderr.contains("Time Space Reducer") && stderr.contains("not a T-saur archive"), "{stderr}");
+    // any other magic, however short the file, is "not a T-saur archive", not "file too short"
+    let zip = dir.join("z.tsr");
+    std::fs::write(&zip, b"PK\x03\x04").unwrap();
+    let (code, _, stderr) = run(&["list", &s(&zip)]);
+    assert_eq!(code, 2, "{stderr}");
+    assert!(stderr.contains("not a T-saur archive"), "{stderr}");
+    // a truncated T-saur header is still reported as short
+    let short = dir.join("short.tsr");
+    std::fs::write(&short, b"TSR\x1a\x01\x00").unwrap();
+    let (code, _, stderr) = run(&["info", &s(&short)]);
+    assert_eq!(code, 2, "{stderr}");
+    assert!(stderr.contains("too short"), "{stderr}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
