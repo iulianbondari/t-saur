@@ -9,14 +9,14 @@ people and AI agents need to list, search, read and verify without unpacking the
 content-addressed (BLAKE3) and deterministic; encryption with post-quantum recipients, signatures,
 offline N + M recovery volumes and a Model Context Protocol server are optional parts of the same
 binary. Format v1 is frozen; the software is at 1.0.0-rc.2 (1.0.0-rc.1 on crates.io (`cargo install tsaur`;
-library `tsaur-core`, <https://docs.rs/tsaur-core>); binary packages come with the rc.2 tag on the
-Releases page. Apache-2.0 OR MIT, no account, no service.
+library `tsaur-core`, <https://docs.rs/tsaur-core>); lite packages for the three systems on the
+[Releases page](https://github.com/iulianbondari/t-saur/releases/tag/v1.0.0-rc.2) (pre-release). Apache-2.0 OR MIT, no account, no service.
 
 Repository and README: <https://github.com/iulianbondari/t-saur>
 
 ## Start here
 
-* [Installing](INSTALL.md): `cargo install tsaur`, or building from source (Rust 1.87 or newer); binary packages once tagged.
+* [Installing](INSTALL.md): `cargo install tsaur`, or building from source (Rust 1.87 or newer); lite packages from the Releases page.
 * [User guide](GUIDE.md): first archive, encryption, volume sets, transfers, reading without
   extracting, exit codes. Every command in it is executed before a release.
 * [The v1.0 contract](V1-CONTRACT.md): the nine promises, what is outside v1.0, the reader's
